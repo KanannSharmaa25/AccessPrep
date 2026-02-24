@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface InterviewStyle {
   id: string
@@ -247,6 +248,7 @@ const companyPresets = [
 ]
 
 export default function RealWorldInterview() {
+  const { colors } = useTheme()
   const [selectedStyle, setSelectedStyle] = useState('')
   const [selectedCompany, setSelectedCompany] = useState('')
   const [customJobDesc, setCustomJobDesc] = useState('')
@@ -300,18 +302,50 @@ export default function RealWorldInterview() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+              background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
@@ -320,21 +354,21 @@ export default function RealWorldInterview() {
             }}>
               ♿
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#33BC65' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+          <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>← Back</Link>
         </div>
       </header>
 
-      <main style={{ padding: '2rem' }}>
+      <main style={{ padding: '2rem', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div className="animate-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏢</div>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
                 Real-World Interview Adaptation
               </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--gray)', maxWidth: '600px', margin: '0 auto' }}>
+              <p style={{ fontSize: '1.1rem', color: '#a3a3a3', maxWidth: '600px', margin: '0 auto' }}>
                 Practice interviews tailored to specific company cultures, industries, and interview styles. 
                 Get realistic preparation for your target role.
               </p>
@@ -342,8 +376,15 @@ export default function RealWorldInterview() {
 
             {!interviewStarted ? (
               <>
-                <div className="card" style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ marginBottom: '1rem' }}>Quick Start: Popular Companies</h3>
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  padding: '1.5rem',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Quick Start: Popular Companies</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
                     {companyPresets.map((company) => (
                       <button
@@ -355,9 +396,9 @@ export default function RealWorldInterview() {
                         }}
                         style={{
                           padding: '1rem',
-                          background: selectedCompany === company.name ? getToneColor(company.style) : 'var(--bg-primary)',
-                          color: selectedCompany === company.name ? 'white' : 'var(--text-primary)',
-                          border: `2px solid ${selectedCompany === company.name ? getToneColor(company.style) : 'var(--border)'}`,
+                          background: selectedCompany === company.name ? getToneColor(company.style) : 'rgba(255, 255, 255, 0.05)',
+                          color: selectedCompany === company.name ? 'white' : '#a3a3a3',
+                          border: `2px solid ${selectedCompany === company.name ? getToneColor(company.style) : 'rgba(51, 188, 101, 0.3)'}`,
                           borderRadius: '12px',
                           cursor: 'pointer',
                           fontWeight: selectedCompany === company.name ? 600 : 400,
@@ -370,8 +411,15 @@ export default function RealWorldInterview() {
                   </div>
                 </div>
 
-                <div className="card" style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ marginBottom: '1rem' }}>Or Select Interview Style</h3>
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  padding: '1.5rem',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Or Select Interview Style</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
                     {interviewStyles.map((style) => (
                       <button
@@ -382,9 +430,9 @@ export default function RealWorldInterview() {
                         }}
                         style={{
                           padding: '1.25rem',
-                          background: selectedStyle === style.id ? getToneColor(style.id) : 'var(--bg-primary)',
-                          color: selectedStyle === style.id ? 'white' : 'var(--text-primary)',
-                          border: `2px solid ${selectedStyle === style.id ? getToneColor(style.id) : 'var(--border)'}`,
+                          background: selectedStyle === style.id ? getToneColor(style.id) : 'rgba(255, 255, 255, 0.05)',
+                          color: selectedStyle === style.id ? 'white' : '#a3a3a3',
+                          border: `2px solid ${selectedStyle === style.id ? getToneColor(style.id) : 'rgba(51, 188, 101, 0.3)'}`,
                           borderRadius: '12px',
                           cursor: 'pointer',
                           textAlign: 'left',
@@ -400,46 +448,78 @@ export default function RealWorldInterview() {
                   </div>
                 </div>
 
-                <div className="card" style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ marginBottom: '1rem' }}>Customize Your Interview</h3>
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  padding: '1.5rem',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Customize Your Interview</h3>
                   <div style={{ display: 'grid', gap: '1rem' }}>
                     <div>
-                      <label className="label">Job Title / Role</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a3a3a3' }}>Job Title / Role</label>
                       <input
-                        className="input"
                         value={customRole}
                         onChange={(e) => setCustomRole(e.target.value)}
                         placeholder="e.g., Senior Software Engineer"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(51, 188, 101, 0.3)',
+                          borderRadius: '8px',
+                          color: '#ffffff',
+                          fontSize: '1rem',
+                          outline: 'none'
+                        }}
                       />
                     </div>
                     <div>
-                      <label className="label">Job Description (Optional)</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a3a3a3' }}>Job Description (Optional)</label>
                       <textarea
-                        className="input"
                         value={customJobDesc}
                         onChange={(e) => setCustomJobDesc(e.target.value)}
                         placeholder="Paste key requirements or responsibilities..."
                         rows={4}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(51, 188, 101, 0.3)',
+                          borderRadius: '8px',
+                          color: '#ffffff',
+                          fontSize: '1rem',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          outline: 'none'
+                        }}
                       />
                     </div>
                   </div>
                 </div>
 
                 {currentStyle && (
-                  <div className="card" style={{ 
+                  <div style={{ 
                     marginBottom: '1.5rem',
-                    borderLeft: `4px solid ${getToneColor(selectedStyle)}`
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: '16px',
+                    border: `1px solid rgba(51, 188, 101, 0.2)`,
+                    borderLeft: `4px solid ${getToneColor(selectedStyle)}`,
+                    padding: '1.5rem',
+                    backdropFilter: 'blur(10px)'
                   }}>
-                    <h4 style={{ marginBottom: '0.75rem' }}>Selected: {currentStyle.name} Interview Style</h4>
-                    <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.9rem' }}>
+                    <h4 style={{ marginBottom: '0.75rem', color: '#ffffff' }}>Selected: {currentStyle.name} Interview Style</h4>
+                    <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.9rem', color: '#a3a3a3' }}>
                       <div>
-                        <strong>Tone:</strong> {currentStyle.questionTone}
+                        <strong style={{ color: '#ffffff' }}>Tone:</strong> {currentStyle.questionTone}
                       </div>
                       <div>
-                        <strong>Expected Depth:</strong> {currentStyle.expectedDepth}
+                        <strong style={{ color: '#ffffff' }}>Expected Depth:</strong> {currentStyle.expectedDepth}
                       </div>
                       <div>
-                        <strong>Characteristics:</strong>
+                        <strong style={{ color: '#ffffff' }}>Characteristics:</strong>
                         <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
                           {currentStyle.characteristics.map((char, idx) => (
                             <li key={idx}>{char}</li>
@@ -452,15 +532,31 @@ export default function RealWorldInterview() {
 
                 <button
                   onClick={startInterview}
-                  className="btn btn-primary btn-lg"
-                  style={{ width: '100%' }}
+                  style={{ 
+                    width: '100%',
+                    background: '#33BC65',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '1rem 2rem',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    cursor: 'pointer',
+                    opacity: (!selectedStyle && !selectedCompany) ? 0.5 : 1
+                  }}
                   disabled={!selectedStyle && !selectedCompany}
                 >
                   Start {currentStyle?.name || selectedPreset?.name || 'Custom'} Interview 🚀
                 </button>
               </>
             ) : (
-              <div className="card">
+              <div style={{ 
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <div>
                     <span style={{
@@ -474,13 +570,13 @@ export default function RealWorldInterview() {
                       {currentStyle?.name} Style
                     </span>
                   </div>
-                  <div style={{ color: 'var(--gray)', fontSize: '0.9rem' }}>
+                  <div style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>
                     Question {currentQuestion + 1} of {currentStyle?.commonQuestions.length || 5}
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ height: '8px', background: 'var(--border)', borderRadius: '4px' }}>
+                  <div style={{ height: '8px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>
                     <div style={{
                       height: '100%',
                       width: `${((currentQuestion + 1) / (currentStyle?.commonQuestions.length || 5)) * 100}%`,
@@ -492,12 +588,12 @@ export default function RealWorldInterview() {
 
                 <div style={{ 
                   padding: '1.5rem', 
-                  background: 'var(--bg-secondary)', 
+                  background: 'rgba(0, 0, 0, 0.3)', 
                   borderRadius: '12px',
                   marginBottom: '1.5rem' 
                 }}>
-                  <h3 style={{ marginBottom: '0.5rem' }}>{currentStyle?.commonQuestions[currentQuestion]}</h3>
-                  <p style={{ color: 'var(--gray)', fontSize: '0.85rem', margin: 0 }}>
+                  <h3 style={{ marginBottom: '0.5rem', color: '#ffffff' }}>{currentStyle?.commonQuestions[currentQuestion]}</h3>
+                  <p style={{ color: '#a3a3a3', fontSize: '0.85rem', margin: 0 }}>
                     Remember: {currentStyle?.questionTone}. Be ready for {currentStyle?.expectedDepth.toLowerCase()} answers.
                   </p>
                 </div>

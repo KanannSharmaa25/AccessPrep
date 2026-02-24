@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface ResponseStrategy {
   id: string
@@ -262,6 +263,7 @@ const sensitiveQuestionStrategies: Record<string, {
 }
 
 export default function SensitiveQuestions() {
+  const { colors } = useTheme()
   const [selectedTopic, setSelectedTopic] = useState<string>('careerGap')
   const [customSituation, setCustomSituation] = useState('')
   const [showCustom, setShowCustom] = useState(false)
@@ -286,18 +288,50 @@ export default function SensitiveQuestions() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+              background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
@@ -306,28 +340,35 @@ export default function SensitiveQuestions() {
             }}>
               ♿
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#33BC65' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+          <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>← Back</Link>
         </div>
       </header>
 
-      <main style={{ padding: '2rem' }}>
+      <main style={{ padding: '2rem', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div className="animate-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
                 Sensitive Question Handler
               </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--gray)', maxWidth: '600px', margin: '0 auto' }}>
+              <p style={{ fontSize: '1.1rem', color: '#a3a3a3', maxWidth: '600px', margin: '0 auto' }}>
                 Prepare confident, professional responses to difficult interview questions. 
                 You control how much you disclose.
               </p>
             </div>
 
-            <div className="card" style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>What would you like help with?</h3>
+            <div style={{ 
+              marginBottom: '1.5rem',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              padding: '1.5rem',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>What would you like help with?</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                 {Object.entries(topicLabels).map(([key, label]) => (
                   <button
@@ -335,9 +376,9 @@ export default function SensitiveQuestions() {
                     onClick={() => { setSelectedTopic(key); setSelectedStrategy(null); setShowCustom(false); }}
                     style={{
                       padding: '1rem',
-                      background: selectedTopic === key && !showCustom ? 'var(--primary)' : 'var(--bg-primary)',
-                      color: selectedTopic === key && !showCustom ? 'white' : 'var(--text-primary)',
-                      border: `2px solid ${selectedTopic === key && !showCustom ? 'var(--primary)' : 'var(--border)'}`,
+                      background: selectedTopic === key && !showCustom ? '#33BC65' : 'rgba(255, 255, 255, 0.05)',
+                      color: selectedTopic === key && !showCustom ? 'white' : '#a3a3a3',
+                      border: `2px solid ${selectedTopic === key && !showCustom ? '#33BC65' : 'rgba(51, 188, 101, 0.3)'}`,
                       borderRadius: '12px',
                       cursor: 'pointer',
                       fontWeight: selectedTopic === key && !showCustom ? 600 : 400,
@@ -351,74 +392,94 @@ export default function SensitiveQuestions() {
             </div>
 
             {!showCustom && currentQuestion && (
-              <>
-                <div className="card" style={{ 
-                  marginBottom: '1.5rem', 
-                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                  borderLeft: '4px solid #f59e0b'
-                }}>
-                  <h4 style={{ marginBottom: '0.5rem' }}>📝 The Question</h4>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-                    "{currentQuestion.question}"
-                  </p>
-                  <p style={{ fontSize: '0.9rem', color: '#78350f' }}>
-                    {currentQuestion.description}
-                  </p>
-                </div>
+              <div style={{ 
+                marginBottom: '1.5rem', 
+                background: 'rgba(51, 188, 101, 0.1)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderLeft: '4px solid #33BC65',
+                padding: '1.5rem'
+              }}>
+                <h3 style={{ marginBottom: '0.75rem', color: '#ffffff' }}>{currentQuestion.question}</h3>
+                <p style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>{currentQuestion.description}</p>
+              </div>
+            )}
 
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  {currentQuestion.strategies.map((strategy) => (
-                    <div 
-                      key={strategy.id}
-                      className="card"
-                      style={{
-                        borderLeft: selectedStrategy === strategy.id ? '4px solid var(--primary)' : '4px solid transparent',
-                        background: selectedStrategy === strategy.id ? 'var(--bg-secondary)' : 'var(--bg-primary)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onClick={() => setSelectedStrategy(strategy.id)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            background: strategy.level === 'minimal' ? '#d1fae5' : strategy.level === 'balanced' ? '#dbeafe' : '#fee2e2',
-                            color: strategy.level === 'minimal' ? '#065f46' : strategy.level === 'balanced' ? '#1e40af' : '#991b1b'
-                          }}>
-                            {strategy.level === 'minimal' ? 'Minimal Disclosure' : strategy.level === 'balanced' ? 'Balanced' : 'Full Explanation'}
-                          </span>
-                          <h4 style={{ margin: 0 }}>{strategy.title}</h4>
+            {!showCustom && currentQuestion && (
+              <div style={{ 
+                marginBottom: '1.5rem', 
+                background: 'rgba(51, 188, 101, 0.1)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderLeft: '4px solid #33BC65',
+                padding: '1.5rem'
+              }}>
+                <h4 style={{ marginBottom: '0.5rem', color: '#ffffff' }}>📝 The Question</h4>
+                <p style={{ fontSize: '1.1rem', fontWeight: 500, marginBottom: '0.5rem', color: '#ffffff' }}>
+                  "{currentQuestion.question}"
+                </p>
+                <p style={{ fontSize: '0.9rem', color: '#a3a3a3' }}>
+                  {currentQuestion.description}
+                </p>
+              </div>
+            )}
+
+            {!showCustom && currentQuestion && currentQuestion.strategies && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {currentQuestion.strategies.map((strategy) => (
+                  <div 
+                    key={strategy.id}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(51, 188, 101, 0.2)',
+                      borderRadius: '12px',
+                      padding: '1.5rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      borderLeft: selectedStrategy === strategy.id ? '4px solid #33BC65' : '4px solid transparent'
+                    }}
+                    onClick={() => setSelectedStrategy(strategy.id)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: strategy.level === 'minimal' ? 'rgba(51, 188, 101, 0.2)' : strategy.level === 'balanced' ? 'rgba(18, 220, 239, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                          color: strategy.level === 'minimal' ? '#5DFFD9' : strategy.level === 'balanced' ? '#12DCEF' : '#f59e0b'
+                        }}>
+                          {strategy.level === 'minimal' ? 'Minimal Disclosure' : strategy.level === 'balanced' ? 'Balanced' : 'Full Explanation'}
+                        </span>
+                        <h4 style={{ margin: 0, color: '#ffffff' }}>{strategy.title}</h4>
                         </div>
                         <span style={{ fontSize: '1.25rem' }}>{selectedStrategy === strategy.id ? '👇' : '👉'}</span>
                       </div>
-                      <p style={{ margin: 0, color: 'var(--gray)', fontSize: '0.9rem' }}>{strategy.description}</p>
+                      <p style={{ margin: 0, color: '#a3a3a3', fontSize: '0.9rem' }}>{strategy.description}</p>
 
                       {selectedStrategy === strategy.id && (
-                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                          <p style={{ fontWeight: 600, marginBottom: '0.75rem' }}>Choose a response template:</p>
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(51, 188, 101, 0.2)' }}>
+                          <p style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#ffffff' }}>Choose a response template:</p>
                           <div style={{ display: 'grid', gap: '0.75rem' }}>
                             {strategy.templates.map((template, idx) => (
                               <div 
                                 key={idx}
                                 style={{
                                   padding: '1rem',
-                                  background: 'white',
+                                  background: 'rgba(0, 0, 0, 0.3)',
                                   borderRadius: '8px',
-                                  border: '1px solid var(--border)'
+                                  border: '1px solid rgba(51, 188, 101, 0.3)'
                                 }}
                               >
-                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', lineHeight: 1.6, color: '#e5e5e5' }}>
                                   "{template}"
                                 </p>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); copyToClipboard(template, idx); }}
                                   style={{
                                     padding: '0.5rem 1rem',
-                                    background: copiedTemplate === `${selectedTopic}-${idx}` ? '#10b981' : 'var(--primary)',
+                                    background: copiedTemplate === `${selectedTopic}-${idx}` ? '#33BC65' : '#12DCEF',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
@@ -437,28 +498,45 @@ export default function SensitiveQuestions() {
                     </div>
                   ))}
                 </div>
-              </>
-            )}
+              )}
 
             {showCustom && (
-              <div className="card">
-                <h3 style={{ marginBottom: '1rem' }}>💬 Custom Situation</h3>
-                <p style={{ marginBottom: '1rem', color: 'var(--gray)' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>💬 Custom Situation</h3>
+                <p style={{ marginBottom: '1rem', color: '#a3a3a3' }}>
                   Describe your situation and I'll help you craft a professional response:
                 </p>
                 <textarea
-                  className="input"
                   value={customSituation}
                   onChange={(e) => setCustomSituation(e.target.value)}
                   placeholder="e.g., I took time off to care for my elderly parent, I was laid off due to company restructuring, I changed careers entirely..."
                   rows={4}
-                  style={{ marginBottom: '1rem' }}
+                  style={{ 
+                    marginBottom: '1rem',
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(51, 188, 101, 0.3)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    outline: 'none'
+                  }}
                 />
                 {customSituation && (
                   <div style={{ 
                     padding: '1.5rem', 
-                    background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', 
-                    borderRadius: '12px' 
+                    background: 'rgba(51, 188, 101, 0.1)', 
+                    borderRadius: '12px',
+                    border: '1px solid rgba(51, 188, 101, 0.3)'
                   }}>
                     <h4 style={{ marginBottom: '1rem' }}>💡 Suggested Approach</h4>
                     <p style={{ marginBottom: '1rem' }}>
@@ -520,13 +598,43 @@ export default function SensitiveQuestions() {
             </div>
 
             <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/interview" className="btn btn-primary">
+              <Link to="/interview" style={{
+                background: '#33BC65',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 🎤 Practice in Mock Interview
               </Link>
-              <Link to="/strategy" className="btn btn-secondary">
+              <Link to="/strategy" style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#a3a3a3',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 🎯 Strategy Builder
               </Link>
-              <Link to="/mentor" className="btn btn-secondary">
+              <Link to="/mentor" style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#a3a3a3',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 🤖 AI Mentor
               </Link>
             </div>

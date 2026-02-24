@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface Message {
   id: string
@@ -39,6 +40,7 @@ const followUpChallenges = [
 ]
 
 export default function Mentor() {
+  const { colors } = useTheme()
   const [sessionHistory, setSessionHistory] = useState<SessionData[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -488,11 +490,43 @@ What feels most important to you right now?`
   const analysis = getAnalysis()
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
@@ -510,16 +544,16 @@ What feels most important to you right now?`
             </div>
             <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+            <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>← Back</Link>
         </div>
       </header>
 
       <main style={{ padding: '2rem' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
             🤖 AI Interview Mentor
           </h1>
-          <p style={{ color: 'var(--gray)', marginBottom: '2rem' }}>
+          <p style={{ color: '#a3a3a3', marginBottom: '2rem' }}>
             Your personal coaching partner - always here to help you succeed
           </p>
 
@@ -536,15 +570,16 @@ What feels most important to you right now?`
                 onClick={() => setActiveTab(tab.id as any)}
                 style={{
                   padding: '0.75rem 1.25rem',
-                  background: activeTab === tab.id ? 'var(--primary)' : 'white',
-                  color: activeTab === tab.id ? 'white' : 'var(--text-primary)',
-                  border: `2px solid ${activeTab === tab.id ? 'var(--primary)' : 'var(--border-color)'}`,
+                  background: activeTab === tab.id ? '#33BC65' : 'rgba(255, 255, 255, 0.05)',
+                  color: activeTab === tab.id ? '#ffffff' : '#a3a3a3',
+                  border: `2px solid ${activeTab === tab.id ? '#33BC65' : 'rgba(51, 188, 101, 0.3)'}`,
                   borderRadius: '25px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  backdropFilter: 'blur(10px)'
                 }}
               >
                 {tab.icon} {tab.label}
@@ -555,7 +590,15 @@ What feels most important to you right now?`
           {activeTab === 'chat' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem' }}>
               {/* Chat Area */}
-              <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '600px' }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '600px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                backdropFilter: 'blur(10px)'
+              }}>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {messages.map(msg => (
                     <div key={msg.id} style={{
@@ -565,13 +608,14 @@ What feels most important to you right now?`
                       <div style={{
                         maxWidth: '85%',
                         padding: '1.25rem 1.5rem',
-                        background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9',
-                        color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
+                        background: msg.role === 'user' ? '#33BC65' : 'rgba(255, 255, 255, 0.08)',
+                        color: msg.role === 'user' ? '#ffffff' : '#e5e5e5',
                         borderRadius: msg.role === 'user' ? '22px 22px 6px 22px' : '22px 22px 22px 6px',
                         whiteSpace: 'pre-wrap',
                         fontSize: '1.1rem',
                         lineHeight: 1.7,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                        border: msg.role === 'mentor' ? '1px solid rgba(51, 188, 101, 0.2)' : 'none'
                       }}>
                         {msg.role === 'mentor' && <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.75rem', fontSize: '1rem' }}>🤖 Mentor</span>}
                         {msg.content}
@@ -579,7 +623,7 @@ What feels most important to you right now?`
                     </div>
                   ))}
                   {isTyping && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--gray)', fontSize: '1.1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#a3a3a3', fontSize: '1.1rem' }}>
                       <span>🤖</span>
                       <span>Mentor is typing...</span>
                     </div>
@@ -587,17 +631,34 @@ What feels most important to you right now?`
                   <div ref={messagesEndRef} />
                 </div>
                 
-                <div style={{ padding: '1.25rem', borderTop: '2px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
+                <div style={{ padding: '1.25rem', borderTop: '1px solid rgba(51, 188, 101, 0.2)', display: 'flex', gap: '0.75rem' }}>
                   <input
                     type="text"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyPress={e => e.key === 'Enter' && handleSend()}
                     placeholder="Ask me anything..."
-                    className="input"
-                    style={{ flex: 1, fontSize: '1.1rem', padding: '1rem 1.25rem' }}
+                    style={{ 
+                      flex: 1, 
+                      fontSize: '1.1rem', 
+                      padding: '1rem 1.25rem',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(51, 188, 101, 0.3)',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      outline: 'none'
+                    }}
                   />
-                  <button onClick={handleSend} className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 1.5rem' }}>
+                  <button onClick={handleSend} style={{ 
+                    fontSize: '1.1rem', 
+                    padding: '1rem 1.5rem',
+                    background: '#33BC65',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}>
                     Send
                   </button>
                 </div>
@@ -606,35 +667,47 @@ What feels most important to you right now?`
               {/* Side Panel */}
               <div>
                 {analysis && (
-                  <div className="card" style={{ marginBottom: '1rem' }}>
-                    <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>📊 Your Progress</h3>
+                  <div style={{ 
+                    marginBottom: '1rem',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(51, 188, 101, 0.2)',
+                    padding: '1.5rem',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    <h3 style={{ fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>📊 Your Progress</h3>
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                       {Object.entries(analysis).map(([key, value]) => (
                         <div key={key}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                            <span style={{ fontSize: '0.85rem', textTransform: 'capitalize' }}>{key}</span>
-                            <span style={{ fontWeight: 700 }}>{value}%</span>
+                            <span style={{ fontSize: '0.85rem', textTransform: 'capitalize', color: '#a3a3a3' }}>{key}</span>
+                            <span style={{ fontWeight: 700, color: '#ffffff' }}>{value}%</span>
                           </div>
-                          <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px' }}>
+                          <div style={{ height: '8px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>
                             <div style={{
                               height: '100%',
                               width: `${value}%`,
-                              background: value >= 80 ? '#10b981' : value >= 60 ? '#f59e0b' : '#ef4444',
+                              background: value >= 80 ? '#33BC65' : value >= 60 ? '#12DCEF' : '#f59e0b',
                               borderRadius: '4px'
                             }} />
                           </div>
                         </div>
                       ))}
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--gray)', marginTop: '1rem' }}>
+                    <p style={{ fontSize: '0.8rem', color: '#a3a3a3', marginTop: '1rem' }}>
                       {sessionHistory.length} sessions completed
                     </p>
                   </div>
                 )}
 
-                <div className="card" style={{ background: '#fef3c7' }}>
-                  <h3 style={{ fontWeight: 700, marginBottom: '0.75rem', color: '#92400e' }}>💙 Quick Tip</h3>
-                  <p style={{ fontSize: '0.9rem', color: '#92400e' }}>
+                <div style={{ 
+                  background: 'rgba(51, 188, 101, 0.1)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.3)',
+                  padding: '1.5rem'
+                }}>
+                  <h3 style={{ fontWeight: 700, marginBottom: '0.75rem', color: '#5DFFD9' }}>💙 Quick Tip</h3>
+                  <p style={{ fontSize: '0.9rem', color: '#a3a3a3' }}>
                     Remember: Interviewers are on your side. They want to find the right person - and that could be you!
                   </p>
                 </div>
@@ -643,9 +716,15 @@ What feels most important to you right now?`
           )}
 
           {activeTab === 'reflection' && (
-            <div className="card">
-              <h2 style={{ fontWeight: 700, marginBottom: '1rem' }}>📝 Reflection Exercises</h2>
-              <p style={{ color: 'var(--gray)', marginBottom: '1.5rem' }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              padding: '2rem',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h2 style={{ fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>📝 Reflection Exercises</h2>
+              <p style={{ color: '#a3a3a3', marginBottom: '1.5rem' }}>
                 Take a moment to reflect on your progress. This builds self-awareness and confidence.
               </p>
               
@@ -653,32 +732,58 @@ What feels most important to you right now?`
                 {reflectionExercises.map((exercise, i) => (
                   <div key={i} style={{
                     padding: '1.5rem',
-                    background: 'var(--bg-primary)',
+                    background: 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '12px',
-                    borderLeft: '4px solid var(--primary)'
+                    borderLeft: '4px solid #33BC65'
                   }}>
-                    <h3 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{exercise.title}</h3>
-                    <p style={{ color: 'var(--gray)' }}>{exercise.prompt}</p>
+                    <h3 style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#ffffff' }}>{exercise.title}</h3>
+                    <p style={{ color: '#a3a3a3' }}>{exercise.prompt}</p>
                     <textarea
-                      className="input"
                       placeholder="Write your thoughts here..."
                       rows={3}
-                      style={{ marginTop: '1rem' }}
+                      style={{ 
+                        marginTop: '1rem',
+                        width: '100%',
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(51, 188, 101, 0.3)',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        color: '#ffffff',
+                        fontSize: '1rem',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
                     />
                   </div>
                 ))}
               </div>
 
-              <button className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+              <button style={{ 
+                marginTop: '1.5rem',
+                background: '#33BC65',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}>
                 Save Reflections
               </button>
             </div>
           )}
 
           {activeTab === 'practice' && (
-            <div className="card">
-              <h2 style={{ fontWeight: 700, marginBottom: '1rem' }}>🎯 Follow-Up Challenge Practice</h2>
-              <p style={{ color: 'var(--gray)', marginBottom: '1.5rem' }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              padding: '2rem',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h2 style={{ fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>🎯 Follow-Up Challenge Practice</h2>
+              <p style={{ color: '#a3a3a3', marginBottom: '1.5rem' }}>
                 Interviewers often ask follow-up questions. Let's practice handling them!
               </p>
               
@@ -686,26 +791,46 @@ What feels most important to you right now?`
                 {followUpChallenges.map((challenge, i) => (
                   <div key={i} style={{
                     padding: '1.5rem',
-                    background: 'var(--bg-primary)',
+                    background: 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '12px'
                   }}>
-                    <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.5rem', color: '#33BC65' }}>
                       "{challenge.question}"
                     </div>
-                    <div style={{ color: 'var(--gray)', marginBottom: '1rem' }}>
+                    <div style={{ color: '#a3a3a3', marginBottom: '1rem' }}>
                       💡 {challenge.tips}
                     </div>
                     <textarea
-                      className="input"
                       placeholder="Practice your answer here..."
                       rows={3}
+                      style={{ 
+                        width: '100%',
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(51, 188, 101, 0.3)',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        color: '#ffffff',
+                        fontSize: '1rem',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
                     />
                   </div>
                 ))}
               </div>
 
               <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                <Link to="/interview" className="btn btn-primary">
+                <Link to="/interview" style={{
+                  background: '#33BC65',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '1rem 2rem',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  textDecoration: 'none',
+                  cursor: 'pointer'
+                }}>
                   Start Mock Interview
                 </Link>
               </div>
@@ -713,9 +838,15 @@ What feels most important to you right now?`
           )}
 
           {activeTab === 'tips' && (
-            <div className="card">
-              <h2 style={{ fontWeight: 700, marginBottom: '1rem' }}>💡 Mental Preparation Tips</h2>
-              <p style={{ color: 'var(--gray)', marginBottom: '1.5rem' }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              padding: '2rem',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h2 style={{ fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>💡 Mental Preparation Tips</h2>
+              <p style={{ color: '#a3a3a3', marginBottom: '1.5rem' }}>
                 Before your interview, try these confidence-building techniques:
               </p>
               
@@ -723,7 +854,7 @@ What feels most important to you right now?`
                 {mentalPreparationTips.map((tip, i) => (
                   <div key={i} style={{
                     padding: '1.25rem',
-                    background: i % 2 === 0 ? '#f0fdf4' : '#faf5ff',
+                    background: i % 2 === 0 ? 'rgba(51, 188, 101, 0.1)' : 'rgba(18, 220, 239, 0.1)',
                     borderRadius: '12px',
                     display: 'flex',
                     gap: '1rem',
@@ -733,8 +864,8 @@ What feels most important to you right now?`
                       {i === 0 ? '🌬️' : i === 1 ? '🧠' : i === 2 ? '💪' : '✨'}
                     </div>
                     <div>
-                      <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{tip.title}</h3>
-                      <p style={{ color: 'var(--gray)' }}>{tip.description}</p>
+                      <h3 style={{ fontWeight: 700, marginBottom: '0.25rem', color: '#ffffff' }}>{tip.title}</h3>
+                      <p style={{ color: '#a3a3a3' }}>{tip.description}</p>
                     </div>
                   </div>
                 ))}
@@ -743,11 +874,12 @@ What feels most important to you right now?`
               <div style={{
                 marginTop: '2rem',
                 padding: '1.5rem',
-                background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-                borderRadius: '12px'
+                background: 'linear-gradient(135deg, rgba(51, 188, 101, 0.2) 0%, rgba(18, 220, 239, 0.1) 100%)',
+                borderRadius: '12px',
+                border: '1px solid rgba(51, 188, 101, 0.3)'
               }}>
-                <h3 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>🌟 Daily Affirmation</h3>
-                <p style={{ fontSize: '1.1rem', fontStyle: 'italic', color: '#1e40af' }}>
+                <h3 style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#5DFFD9' }}>🌟 Daily Affirmation</h3>
+                <p style={{ fontSize: '1.1rem', fontStyle: 'italic', color: '#e5e5e5' }}>
                   "I am prepared. I am capable. I have valuable experience to share. I deserve this opportunity."
                 </p>
               </div>

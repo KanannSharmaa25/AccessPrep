@@ -17,19 +17,39 @@ import DeepInterview from './pages/DeepInterview'
 import InterviewReplay from './pages/InterviewReplay'
 import RealWorldInterview from './pages/RealWorldInterview'
 
+const themeConfigs: Record<string, { bg: string; text: string; accent: string; cardBg: string; border: string }> = {
+  light: { bg: '#f5f5f5', text: '#1a1a1a', accent: '#0d9488', cardBg: '#ffffff', border: '#e5e7eb' },
+  dark: { bg: '#070707', text: '#ffffff', accent: '#33BC65', cardBg: 'rgba(17, 17, 17, 0.8)', border: 'rgba(51, 188, 101, 0.15)' },
+  'high-contrast': { bg: '#000000', text: '#ffffff', accent: '#ffff00', cardBg: '#111111', border: '#ffffff' },
+  protanopia: { bg: '#1a1a2e', text: '#f0e6d3', accent: '#7eb8da', cardBg: 'rgba(30, 30, 60, 0.8)', border: 'rgba(126, 184, 218, 0.3)' },
+  deuteranopia: { bg: '#1a1a2e', text: '#f5f0e6', accent: '#b8a8d9', cardBg: 'rgba(30, 30, 50, 0.8)', border: 'rgba(184, 168, 217, 0.3)' },
+  tritanopia: { bg: '#1a1a1a', text: '#f0f0f0', accent: '#f0a07a', cardBg: 'rgba(40, 30, 30, 0.8)', border: 'rgba(240, 160, 122, 0.3)' }
+}
+
+function applyTheme(theme: string) {
+  const config = themeConfigs[theme] || themeConfigs.dark
+  
+  document.documentElement.setAttribute('data-theme', theme === 'high-contrast' ? 'high-contrast' : theme)
+  document.documentElement.style.setProperty('--app-bg', config.bg)
+  document.documentElement.style.setProperty('--app-text', config.text)
+  document.documentElement.style.setProperty('--app-accent', config.accent)
+  document.documentElement.style.setProperty('--app-card-bg', config.cardBg)
+  document.documentElement.style.setProperty('--app-border', config.border)
+  
+  document.body.style.background = config.bg
+  document.body.style.color = config.text
+}
+
 function AppContent() {
   const location = useLocation()
   
   useEffect(() => {
-    const theme = localStorage.getItem('theme') || 'light'
+    const theme = localStorage.getItem('theme') || 'dark'
     const lowStimulation = localStorage.getItem('lowStimulation') === 'true'
     const dyslexiaFriendly = localStorage.getItem('dyslexiaFriendly') === 'true'
     
-    const themeAttr = theme === 'high-contrast' ? 'high-contrast' : theme === 'blue' ? 'blue-light' : theme
-    document.documentElement.setAttribute('data-theme', themeAttr)
+    applyTheme(theme)
     document.documentElement.setAttribute('data-low-stimulation', String(lowStimulation))
-    document.body.style.background = ''
-    document.body.style.color = ''
     
     if (dyslexiaFriendly) {
       document.body.style.fontFamily = '"OpenDyslexic", "Comic Sans MS", sans-serif'
@@ -37,22 +57,29 @@ function AppContent() {
       document.body.style.fontFamily = ''
     }
   }, [location])
-  
+
   useEffect(() => {
-    const theme = localStorage.getItem('theme') || 'light'
-    const lowStimulation = localStorage.getItem('lowStimulation') === 'true'
-    const dyslexiaFriendly = localStorage.getItem('dyslexiaFriendly') === 'true'
+    const handleStorageChange = () => {
+      const theme = localStorage.getItem('theme') || 'dark'
+      const lowStimulation = localStorage.getItem('lowStimulation') === 'true'
+      const dyslexiaFriendly = localStorage.getItem('dyslexiaFriendly') === 'true'
+      
+      applyTheme(theme)
+      document.documentElement.setAttribute('data-low-stimulation', String(lowStimulation))
+      
+      if (dyslexiaFriendly) {
+        document.body.style.fontFamily = '"OpenDyslexic", "Comic Sans MS", sans-serif'
+      } else {
+        document.body.style.fontFamily = ''
+      }
+    }
     
-    const themeAttr = theme === 'high-contrast' ? 'high-contrast' : theme === 'blue' ? 'blue-light' : theme
-    document.documentElement.setAttribute('data-theme', themeAttr)
-    document.documentElement.setAttribute('data-low-stimulation', String(lowStimulation))
-    document.body.style.background = ''
-    document.body.style.color = ''
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('theme-changed', handleStorageChange)
     
-    if (dyslexiaFriendly) {
-      document.body.style.fontFamily = '"OpenDyslexic", "Comic Sans MS", sans-serif'
-    } else {
-      document.body.style.fontFamily = ''
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('theme-changed', handleStorageChange)
     }
   }, [])
   

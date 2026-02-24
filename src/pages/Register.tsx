@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 export default function Register() {
+  const { colors } = useTheme()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -12,12 +14,16 @@ export default function Register() {
     e.preventDefault()
     setLoading(true)
     setTimeout(() => {
+      localStorage.setItem('userName', name || email.split('@')[0])
+      localStorage.setItem('isGuest', 'false')
       setLoading(false)
       navigate('/profile')
     }, 1000)
   }
 
   const handleGuest = () => {
+    localStorage.setItem('userName', 'Guest')
+    localStorage.setItem('isGuest', 'true')
     navigate('/profile')
   }
 
@@ -27,77 +33,163 @@ export default function Register() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #ede9fe 50%, #f8fafc 100%)',
+      background: '#070707',
+      position: 'relative',
+      overflow: 'hidden',
       padding: '2rem'
     }}>
       <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '60px 60px',
+        pointerEvents: 'none'
+      }} />
+
+      <div style={{
         width: '100%',
         maxWidth: '440px',
-        animation: 'slideUp 0.5s ease forwards'
+        position: 'relative',
+        zIndex: 1
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem'
-            }}>
-              ♿
+        <div style={{ textAlign: 'center', marginBottom: '2rem', animation: 'fadeIn 0.6s ease' }}>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', textDecoration: 'none' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+              ◈
             </div>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
           </Link>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Create Account</h1>
-          <p style={{ color: 'var(--gray)' }}>Start your inclusive interview journey</p>
+          <h1 style={{ 
+            fontSize: '2.25rem', 
+            fontWeight: 800, 
+            marginBottom: '0.5rem',
+            background: 'linear-gradient(135deg, #ffffff 0%, #a3a3a3 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.5px'
+          }}>Create Account</h1>
+          <p style={{ color: '#737373' }}>Start your inclusive interview journey</p>
         </div>
         
-        <div className="card" style={{ padding: '2rem' }}>
+        <div style={{ 
+          background: 'rgba(17, 17, 17, 0.8)',
+          border: '1px solid rgba(51, 188, 101, 0.15)',
+          borderRadius: '24px',
+          padding: '2.25rem',
+          backdropFilter: 'blur(20px)',
+          animation: 'slideUp 0.5s ease 0.1s both'
+        }}>
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label className="label">Full Name</label>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: '#e5e5e5', fontSize: '0.9rem' }}>Full Name</label>
               <input
                 type="text"
-                className="input"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="John Doe"
                 required
-              />
-            </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label className="label">Email Address</label>
-              <input
-                type="email"
-                className="input"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1rem',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  borderRadius: '12px',
+                  background: 'rgba(7, 7, 7, 0.6)',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#33BC65'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(51, 188, 101, 0.2)'}
               />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label className="label">Password</label>
+              <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: '#e5e5e5', fontSize: '0.9rem' }}>Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1rem',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  borderRadius: '12px',
+                  background: 'rgba(7, 7, 7, 0.6)',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#33BC65'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(51, 188, 101, 0.2)'}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.75rem' }}>
+              <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: '#e5e5e5', fontSize: '0.9rem' }}>Password</label>
               <input
                 type="password"
-                className="input"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
                 required
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1rem',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  borderRadius: '12px',
+                  background: 'rgba(7, 7, 7, 0.6)',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#33BC65'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(51, 188, 101, 0.2)'}
               />
             </div>
 
             <button 
               type="submit" 
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%', marginBottom: '1.5rem' }}
+              style={{ 
+                width: '100%', 
+                marginBottom: '1.5rem',
+                padding: '1rem 2rem',
+                background: loading ? 'rgba(51, 188, 101, 0.5)' : 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '1.05rem',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s ease'
+              }}
               disabled={loading}
             >
               {loading ? 'Creating account...' : 'Create Account'}
@@ -105,22 +197,32 @@ export default function Register() {
           </form>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0' }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-            <span style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>or</span>
-            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            <div style={{ flex: 1, height: '1px', background: 'rgba(51, 188, 101, 0.15)' }} />
+            <span style={{ color: '#525252', fontSize: '0.85rem' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(51, 188, 101, 0.15)' }} />
           </div>
 
           <button 
             onClick={handleGuest}
-            className="btn btn-secondary btn-lg"
-            style={{ width: '100%' }}
+            style={{ 
+              width: '100%',
+              padding: '1rem 2rem',
+              background: 'transparent',
+              border: '1px solid rgba(51, 188, 101, 0.3)',
+              borderRadius: '12px',
+              color: '#33BC65',
+              fontSize: '1rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
           >
-            Continue as Guest <span>→</span>
+            Continue as Guest →
           </button>
 
-          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--gray)' }}>
+          <p style={{ textAlign: 'center', marginTop: '1.75rem', color: '#737373' }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ fontWeight: 600, color: 'var(--primary)' }}>
+            <Link to="/login" style={{ fontWeight: 600, color: '#33BC65', textDecoration: 'none' }}>
               Sign in
             </Link>
           </p>

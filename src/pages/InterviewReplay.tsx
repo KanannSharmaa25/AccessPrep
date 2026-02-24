@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface InterviewSession {
   id: string
@@ -25,6 +26,7 @@ interface InterviewSession {
 }
 
 export default function InterviewReplay() {
+  const { colors } = useTheme()
   const [sessions, setSessions] = useState<InterviewSession[]>([])
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -203,83 +205,140 @@ export default function InterviewReplay() {
     }
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return '#10b981'
-    if (score >= 60) return '#f59e0b'
-    return '#ef4444'
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+              background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '1.25rem'
             }}>
-              A
+              ♿
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#33BC65' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>Back</Link>
+          <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>Back</Link>
         </div>
       </header>
 
-      <main style={{ padding: '2rem' }}>
+      <main style={{ padding: '2rem', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>Interview Replay</div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎬 Interview Replay</div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
               Review past interviews, identify patterns, and track your improvement.
             </h1>
           </div>
 
           {sessions.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>No Interviews Yet</h3>
-              <p style={{ color: 'var(--gray)', marginBottom: '1.5rem' }}>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '3rem',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>No Interviews Yet</h3>
+              <p style={{ color: '#a3a3a3', marginBottom: '1.5rem' }}>
                 Complete a mock interview to start building your reflection history.
               </p>
-              <Link to="/interview" className="btn btn-primary">
+              <Link to="/interview" style={{
+                background: '#33BC65',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 Start Mock Interview
               </Link>
             </div>
           ) : !selectedSession ? (
-            <div className="card">
-              <h3 style={{ marginBottom: '1rem' }}>Your Interview Sessions</h3>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '16px',
+              border: '1px solid rgba(51, 188, 101, 0.2)',
+              padding: '1.5rem',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Your Interview Sessions</h3>
               <div style={{ display: 'grid', gap: '1rem' }}>
                 {sessions.map((session) => (
                   <div
                     key={session.id}
                     style={{
                       padding: '1.5rem',
-                      background: 'var(--bg-secondary)',
+                      background: 'rgba(255, 255, 255, 0.05)',
                       borderRadius: '12px',
-                      border: '1px solid var(--border)'
+                      border: '1px solid rgba(51, 188, 101, 0.2)'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 0.5rem 0' }}>{session.role} Interview</h4>
-                        <p style={{ margin: 0, color: 'var(--gray)', fontSize: '0.9rem' }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', color: '#ffffff' }}>{session.role} Interview</h4>
+                        <p style={{ margin: 0, color: '#a3a3a3', fontSize: '0.9rem' }}>
                           {session.date}
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button
                           onClick={() => { setSelectedSession(session); setCurrentQuestionIndex(0); }}
-                          className="btn btn-primary"
+                          style={{
+                            background: '#33BC65',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '0.5rem 1rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
                         >
                           View Replay
                         </button>
@@ -287,9 +346,9 @@ export default function InterviewReplay() {
                           onClick={() => deleteSession(session.id)}
                           style={{
                             padding: '0.5rem 1rem',
-                            background: '#fee2e2',
-                            color: '#991b1b',
-                            border: 'none',
+                            background: 'rgba(239, 68, 68, 0.2)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
                             borderRadius: '8px',
                             cursor: 'pointer'
                           }}
@@ -302,7 +361,7 @@ export default function InterviewReplay() {
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                       <div style={{ 
                         padding: '0.5rem 1rem', 
-                        background: getScoreColor(session.scores.communication),
+                        background: '#33BC65',
                         borderRadius: '8px',
                         color: 'white',
                         fontWeight: 600,
@@ -312,7 +371,7 @@ export default function InterviewReplay() {
                       </div>
                       <div style={{ 
                         padding: '0.5rem 1rem', 
-                        background: getScoreColor(session.scores.reasoning),
+                        background: '#12DCEF',
                         borderRadius: '8px',
                         color: 'white',
                         fontWeight: 600,
@@ -322,9 +381,9 @@ export default function InterviewReplay() {
                       </div>
                       <div style={{ 
                         padding: '0.5rem 1rem', 
-                        background: getScoreColor(session.scores.readiness),
+                        background: '#5DFFD9',
                         borderRadius: '8px',
-                        color: 'white',
+                        color: '#070707',
                         fontWeight: 600,
                         fontSize: '0.85rem'
                       }}>
@@ -339,17 +398,32 @@ export default function InterviewReplay() {
             <div>
               <button
                 onClick={() => { setSelectedSession(null); stopAudio(); }}
-                className="btn btn-secondary"
-                style={{ marginBottom: '1rem' }}
+                style={{ 
+                  marginBottom: '1rem',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#a3a3a3',
+                  border: '1px solid rgba(51, 188, 101, 0.3)',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1.5rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
-                Back to Sessions
+                ← Back to Sessions
               </button>
 
-              <div className="card" style={{ marginBottom: '1rem' }}>
+              <div style={{ 
+                marginBottom: '1rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <div>
-                    <h3 style={{ margin: 0 }}>{selectedSession.role} Interview</h3>
-                    <p style={{ margin: '0.25rem 0 0 0', color: 'var(--gray)', fontSize: '0.9rem' }}>
+                    <h3 style={{ margin: 0, color: '#ffffff' }}>{selectedSession.role} Interview</h3>
+                    <p style={{ margin: '0.25rem 0 0 0', color: '#a3a3a3', fontSize: '0.9rem' }}>
                       {selectedSession.date}
                     </p>
                   </div>
@@ -360,7 +434,9 @@ export default function InterviewReplay() {
                       style={{
                         padding: '0.5rem',
                         borderRadius: '8px',
-                        border: '1px solid var(--border)'
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(51, 188, 101, 0.3)',
+                        color: '#ffffff'
                       }}
                     >
                       <option value={0.5}>0.5x</option>
@@ -370,11 +446,27 @@ export default function InterviewReplay() {
                       <option value={1.5}>1.5x</option>
                     </select>
                     {isPlaying ? (
-                      <button onClick={stopAudio} className="btn" style={{ background: '#fee2e2' }}>
+                      <button onClick={stopAudio} style={{ 
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.5rem 1rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}>
                         Stop
                       </button>
                     ) : (
-                      <button onClick={playFullSession} className="btn btn-primary">
+                      <button onClick={playFullSession} style={{
+                        background: '#33BC65',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.5rem 1rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}>
                         Play All
                       </button>
                     )}
@@ -384,7 +476,7 @@ export default function InterviewReplay() {
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ 
                     padding: '0.75rem 1.5rem', 
-                    background: getScoreColor(selectedSession.scores.communication),
+                    background: '#33BC65',
                     borderRadius: '8px',
                     color: 'white',
                     textAlign: 'center'
@@ -394,7 +486,7 @@ export default function InterviewReplay() {
                   </div>
                   <div style={{ 
                     padding: '0.75rem 1.5rem', 
-                    background: getScoreColor(selectedSession.scores.reasoning),
+                    background: '#12DCEF',
                     borderRadius: '8px',
                     color: 'white',
                     textAlign: 'center'
@@ -404,9 +496,9 @@ export default function InterviewReplay() {
                   </div>
                   <div style={{ 
                     padding: '0.75rem 1.5rem', 
-                    background: getScoreColor(selectedSession.scores.readiness),
+                    background: '#5DFFD9',
                     borderRadius: '8px',
-                    color: 'white',
+                    color: '#070707',
                     textAlign: 'center'
                   }}>
                     <div style={{ fontWeight: 600, fontSize: '1.25rem' }}>{selectedSession.scores.readiness}%</div>
@@ -415,24 +507,39 @@ export default function InterviewReplay() {
                 </div>
               </div>
 
-              <div className="card" style={{ marginBottom: '1rem' }}>
+              <div style={{ 
+                marginBottom: '1rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                   <button
                     onClick={() => setActiveTab('transcript')}
-                    className="btn"
                     style={{
-                      background: activeTab === 'transcript' ? 'var(--primary)' : 'var(--bg-primary)',
-                      color: activeTab === 'transcript' ? 'white' : 'var(--text-primary)'
+                      background: activeTab === 'transcript' ? '#33BC65' : 'rgba(255, 255, 255, 0.05)',
+                      color: activeTab === 'transcript' ? '#ffffff' : '#a3a3a3',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1.5rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
                     }}
                   >
                     Transcript
                   </button>
                   <button
                     onClick={() => setActiveTab('analysis')}
-                    className="btn"
                     style={{
-                      background: activeTab === 'analysis' ? 'var(--primary)' : 'var(--bg-primary)',
-                      color: activeTab === 'analysis' ? 'white' : 'var(--text-primary)'
+                      background: activeTab === 'analysis' ? '#33BC65' : 'rgba(255, 255, 255, 0.05)',
+                      color: activeTab === 'analysis' ? '#ffffff' : '#a3a3a3',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1.5rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
                     }}
                   >
                     AI Analysis
@@ -442,7 +549,7 @@ export default function InterviewReplay() {
                 {activeTab === 'transcript' && (
                   <div>
                     {selectedSession.questions.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)' }}>
+                      <div style={{ textAlign: 'center', padding: '2rem', color: '#a3a3a3' }}>
                         <p>Full transcript not available for this session.</p>
                         <p>Complete more interviews to enable detailed replay.</p>
                       </div>
@@ -454,11 +561,11 @@ export default function InterviewReplay() {
                             key={idx}
                             style={{
                               padding: '1rem',
-                              background: currentQuestionIndex === idx ? '#e0e7ff' : 'var(--bg-secondary)',
+                              background: currentQuestionIndex === idx ? 'rgba(51, 188, 101, 0.1)' : 'rgba(255, 255, 255, 0.05)',
                               borderRadius: '8px',
                               marginBottom: '0.75rem',
                               cursor: 'pointer',
-                              borderLeft: currentQuestionIndex === idx ? '3px solid var(--primary)' : '3px solid transparent'
+                              borderLeft: currentQuestionIndex === idx ? '3px solid #33BC65' : '3px solid transparent'
                             }}
                             onClick={() => {
                               setCurrentQuestionIndex(idx)
@@ -466,14 +573,14 @@ export default function InterviewReplay() {
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                              <span style={{ fontWeight: 600, color: '#33BC65' }}>
                                 Q{idx + 1}
                               </span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); playQuestionAndAnswer(idx); }}
                                 style={{
                                   padding: '0.25rem 0.5rem',
-                                  background: 'var(--primary)',
+                                  background: '#33BC65',
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '4px',
@@ -484,17 +591,17 @@ export default function InterviewReplay() {
                                 Play
                               </button>
                             </div>
-                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>{question}</p>
-                            <p style={{ margin: 0, color: 'var(--gray)', fontSize: '0.9rem' }}>
+                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500, color: '#ffffff' }}>{question}</p>
+                            <p style={{ margin: 0, color: '#a3a3a3', fontSize: '0.9rem' }}>
                               {selectedSession.answers[idx] || 'No answer recorded'}
                             </p>
                             {analysis.emotionalNotes && analysis.emotionalNotes.length > 0 && (
-                              <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#0891b2', fontStyle: 'italic' }}>
+                              <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#5DFFD9', fontStyle: 'italic' }}>
                                 {analysis.emotionalNotes[0]}
                               </div>
                             )}
                             {analysis.strong.length > 0 && (
-                              <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#059669' }}>
+                              <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#33BC65' }}>
                                 ✓ {analysis.strong[0]}
                               </div>
                             )}
@@ -511,12 +618,12 @@ export default function InterviewReplay() {
                     <div style={{ 
                       marginBottom: '1.5rem', 
                       padding: '1rem', 
-                      background: 'linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)', 
+                      background: 'rgba(51, 188, 101, 0.1)', 
                       borderRadius: '12px',
-                      borderLeft: '4px solid #0891b2'
+                      borderLeft: '4px solid #33BC65'
                     }}>
-                      <h4 style={{ marginBottom: '0.75rem', color: '#134e4a' }}>💡 AI Insights</h4>
-                      <p style={{ fontSize: '0.9rem', color: '#134e4a', margin: 0 }}>
+                      <h4 style={{ marginBottom: '0.75rem', color: '#5DFFD9' }}>💡 AI Insights</h4>
+                      <p style={{ fontSize: '0.9rem', color: '#a3a3a3', margin: 0 }}>
                         {selectedSession.scores.communication >= 80 
                           ? "You're doing great! Your communication skills are strong. Keep building on this foundation."
                           : selectedSession.scores.communication >= 60
@@ -526,16 +633,17 @@ export default function InterviewReplay() {
                     </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <h4 style={{ marginBottom: '0.75rem' }}>✨ Your Strengths</h4>
+                      <h4 style={{ marginBottom: '0.75rem', color: '#ffffff' }}>✨ Your Strengths</h4>
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
                         {selectedSession.analysis.strongMoments.map((item, idx) => (
                           <div
                             key={idx}
                             style={{
                               padding: '0.75rem 1rem',
-                              background: '#d1fae5',
+                              background: 'rgba(51, 188, 101, 0.1)',
                               borderRadius: '8px',
-                              borderLeft: '3px solid #059669'
+                              borderLeft: '3px solid #33BC65',
+                              color: '#a3a3a3'
                             }}
                           >
                             {item}
@@ -545,16 +653,17 @@ export default function InterviewReplay() {
                     </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <h4 style={{ marginBottom: '0.75rem' }}>🎯 Areas to Develop</h4>
+                      <h4 style={{ marginBottom: '0.75rem', color: '#ffffff' }}>🎯 Areas to Develop</h4>
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
                         {selectedSession.analysis.hesitationPoints.map((item, idx) => (
                           <div
                             key={idx}
                             style={{
                               padding: '0.75rem 1rem',
-                              background: '#fef3c7',
+                              background: 'rgba(245, 158, 11, 0.1)',
                               borderRadius: '8px',
-                              borderLeft: '3px solid #d97706'
+                              borderLeft: '3px solid #f59e0b',
+                              color: '#a3a3a3'
                             }}
                           >
                             {item}
@@ -564,16 +673,17 @@ export default function InterviewReplay() {
                     </div>
 
                     <div>
-                      <h4 style={{ marginBottom: '0.75rem' }}>🚀 Growth Opportunities</h4>
+                      <h4 style={{ marginBottom: '0.75rem', color: '#ffffff' }}>🚀 Growth Opportunities</h4>
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
                         {selectedSession.analysis.missedOpportunities.map((item, idx) => (
                           <div
                             key={idx}
                             style={{
                               padding: '0.75rem 1rem',
-                              background: '#fee2e2',
+                              background: 'rgba(18, 220, 239, 0.1)',
                               borderRadius: '8px',
-                              borderLeft: '3px solid #dc2626'
+                              borderLeft: '3px solid #12DCEF',
+                              color: '#a3a3a3'
                             }}
                           >
                             {item}
@@ -585,13 +695,15 @@ export default function InterviewReplay() {
                 )}
               </div>
 
-              <div className="card" style={{ 
-                background: 'linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)',
+              <div style={{ 
+                background: 'rgba(51, 188, 101, 0.1)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
                 marginTop: '1.5rem',
-                borderLeft: '4px solid #0891b2'
+                padding: '1.5rem'
               }}>
-                <h4 style={{ marginBottom: '1rem', color: '#134e4a' }}>💙 Your Reflection Journey</h4>
-                <ul style={{ paddingLeft: '1.5rem', margin: 0, color: '#134e4a' }}>
+                <h4 style={{ marginBottom: '1rem', color: '#5DFFD9' }}>💙 Your Reflection Journey</h4>
+                <ul style={{ paddingLeft: '1.5rem', margin: 0, color: '#a3a3a3' }}>
                   <li style={{ marginBottom: '0.5rem' }}>🎉 Celebrate what you did well - you earned it!</li>
                   <li style={{ marginBottom: '0.5rem' }}>🎯 Pick ONE thing to work on next time - progress over perfection</li>
                   <li style={{ marginBottom: '0.5rem' }}>🎧 Listen to your answers to notice your natural communication style</li>

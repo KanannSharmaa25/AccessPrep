@@ -1,242 +1,83 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 const industries = [
-  { id: 'it', label: '💻 IT & Software', roles: ['Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'DevOps Engineer', 'Cloud Engineer', 'Cybersecurity Analyst'] },
-  { id: 'data', label: '📊 Data Science & AI', roles: ['Data Scientist', 'Data Analyst', 'Machine Learning Engineer', 'AI Engineer', 'Data Engineer'] },
-  { id: 'product', label: '📦 Product & Design', roles: ['Product Manager', 'UX Designer', 'Project Manager', 'Scrum Master'] },
-  { id: 'business', label: '💼 Business & Finance', roles: ['Business Analyst', 'Financial Analyst', 'Accountant', 'Marketing Manager', 'Sales Representative'] },
-  { id: 'healthcare', label: '🏥 Healthcare', roles: ['Nurse', 'Physical Therapist', 'Pharmacist', 'Healthcare Administrator'] },
-  { id: 'government', label: '🏛️ Government & Public', roles: ['Public Administrator', 'Policy Analyst', 'Government Relations', 'Civil Servant'] },
-  { id: 'education', label: '📚 Education', roles: ['Teacher', 'Professor', 'Instructional Designer', 'Education Administrator'] },
-  { id: 'creative', label: '🎨 Creative & Media', roles: ['Graphic Designer', 'Content Writer', 'Video Editor', 'Social Media Manager', 'SEO Specialist'] },
+  { id: 'it', label: 'IT & Software', roles: ['Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'DevOps Engineer', 'Cloud Engineer', 'Cybersecurity Analyst'] },
+  { id: 'data', label: 'Data Science & AI', roles: ['Data Scientist', 'Data Analyst', 'Machine Learning Engineer', 'AI Engineer', 'Data Engineer'] },
+  { id: 'product', label: 'Product & Design', roles: ['Product Manager', 'UX Designer', 'Project Manager', 'Scrum Master'] },
+  { id: 'business', label: 'Business & Finance', roles: ['Business Analyst', 'Financial Analyst', 'Accountant', 'Marketing Manager', 'Sales Representative'] },
+  { id: 'healthcare', label: 'Healthcare', roles: ['Nurse', 'Physical Therapist', 'Pharmacist', 'Healthcare Administrator'] },
+  { id: 'government', label: 'Government & Public', roles: ['Public Administrator', 'Policy Analyst', 'Government Relations', 'Civil Servant'] },
+  { id: 'education', label: 'Education', roles: ['Teacher', 'Professor', 'Instructional Designer', 'Education Administrator'] },
+  { id: 'creative', label: 'Creative & Media', roles: ['Graphic Designer', 'Content Writer', 'Video Editor', 'Social Media Manager', 'SEO Specialist'] },
 ]
 
 const interviewModes = [
-  { id: 'technical', label: '💻 Technical', description: 'Coding, problem-solving, technical knowledge' },
-  { id: 'behavioral', label: '🎭 Behavioral', description: 'STAR method questions, past experiences' },
-  { id: 'situational', label: '🎯 Situational', description: 'Hypothetical scenarios, decision-making' },
-  { id: 'hr', label: '👥 HR / Cultural Fit', description: 'Company values, teamwork, communication' },
+  { id: 'supportive', label: 'Supportive', description: 'Gentle, encouraging questions for building confidence', difficulty: 1 },
+  { id: 'behavioral', label: 'Behavioral', description: 'STAR method questions, past experiences', difficulty: 2 },
+  { id: 'situational', label: 'Situational', description: 'Hypothetical scenarios, decision-making', difficulty: 3 },
+  { id: 'challenging', label: 'Challenging', description: 'Complex questions that test depth', difficulty: 4 },
 ]
-
-// Skills to extract from resume for personalized questions
-const skillKeywords: Record<string, string[]> = {
-  programming: ['javascript', 'python', 'java', 'react', 'node', 'typescript', 'html', 'css', 'sql', 'ruby', 'go', 'rust'],
-  data: ['analytics', 'visualization', 'machine learning', 'statistics', 'excel', 'tableau', 'pandas', 'numpy', 'tensorflow'],
-  management: ['agile', 'scrum', 'project management', 'leadership', 'team management', 'stakeholder'],
-  communication: ['presentation', 'public speaking', 'writing', 'documentation', 'client communication'],
-  design: ['figma', 'sketch', 'adobe', 'ui', 'ux', 'prototyping', 'user research'],
-  cloud: ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'ci/cd', 'devops'],
-  soft: ['leadership', 'teamwork', 'problem solving', 'critical thinking', 'adaptability', 'time management'],
-}
-
-// Generate personalized questions based on resume content
-const generateResumeQuestions = (resume: string, jobRole: string): string[] => {
-  const resumeLower = resume.toLowerCase()
-  const questions: string[] = []
-  
-  // Extract skills from resume
-  const foundSkills: string[] = []
-  for (const skills of Object.values(skillKeywords)) {
-    for (const skill of skills) {
-      if (resumeLower.includes(skill)) {
-        foundSkills.push(skill)
-      }
-    }
-  }
-  
-  // Generate questions based on found skills
-  if (foundSkills.length > 0) {
-    questions.push(`Tell me about your experience with ${foundSkills.slice(0, 3).join(', ')}. How have you applied these skills in your work?`)
-    questions.push(`Describe a project where you used ${foundSkills[0] || 'your technical skills'}. What was the outcome?`)
-  }
-  
-  // Generate follow-up questions based on job role
-  if (jobRole.toLowerCase().includes('software') || jobRole.toLowerCase().includes('developer')) {
-    questions.push('Walk me through your approach to solving a complex coding problem.')
-    questions.push('How do you ensure your code is maintainable and follows best practices?')
-  } else if (jobRole.toLowerCase().includes('data')) {
-    questions.push('How do you approach analyzing a large dataset? Walk me through your process.')
-    questions.push('Describe a time when your data analysis led to a business decision.')
-  } else if (jobRole.toLowerCase().includes('manager')) {
-    questions.push('Describe your leadership style and how you motivate your team.')
-    questions.push('How do you handle conflicts within your team?')
-  }
-  
-  // Add questions about achievements
-  if (resumeLower.includes('achieved') || resumeLower.includes('increased') || resumeLower.includes('reduced')) {
-    questions.push('You mentioned achievements in your resume. Can you tell me more about a specific accomplishment you are proud of?')
-  }
-  
-  // Add questions about challenges overcome
-  if (resumeLower.includes('challenge') || resumeLower.includes('difficult') || resumeLower.includes('obstacle')) {
-    questions.push('Describe a significant challenge you faced and how you overcame it.')
-  }
-  
-  return questions
-}
-
-// Emotion detection patterns
-const emotionPatterns = {
-  enthusiastic: { pattern: /excited|passionate|love|thrilled|great|fantastic|amazing|wonderful/i, emoji: '😊' },
-  reflective: { pattern: /think|believe|feel|perhaps|might|maybe|i consider/i, emoji: '🤔' },
-  confident: { pattern: /certain|sure|definitely|absolutely|confident|guarantee/i, emoji: '💪' },
-  humble: { pattern: /tried|learned| grew|developed|worked on|improving/i, emoji: '🌱' },
-  determined: { pattern: /will|going to|determined|committed|focused|driven/i, emoji: '🎯' },
-  empathetic: { pattern: /helped|supported|understood|cared|listened|collaborated/i, emoji: '🤝' },
-}
-
-// Empathetic response templates
-const empatheticOpeners = [
-  "I appreciate you sharing that - it shows real self-awareness.",
-  "Thank you for being open about that experience.",
-  "That's a thoughtful response - taking time to reflect is a real strength.",
-  "I hear you, and that's a very honest answer.",
-  "Your willingness to share that speaks to your character.",
-]
-
-const empatheticClosers = [
-  "Remember, every interview is practice for the next one.",
-  "You're building skills that will serve you well.",
-  "This is exactly the kind of practice that leads to success.",
-  "Your effort right now is going to pay off.",
-  "Be proud of yourself for putting in this work.",
-]
-
-// Disability-aware feedback with emotional intelligence
-const generateDisabilityAwareFeedback = (answer: string, hasSpeechImpairment: boolean, hasVisualImpairment: boolean): { feedback: string; strengths: string[]; improvements: string[]; emotionalTone: string; empatheticMessage: string } => {
-  const length = answer.length
-  const hasSTAR = /when|i had|i was|i worked|i led|i managed|i achieved|i created|i built|i designed/i.test(answer)
-  const hasQuantification = /\d+%|increased|reduced|improved|saved|managed|drove|grew|increased|decreased|achieved|completed|led/i.test(answer)
-  const hasSpecificExample = /\b(project|team|customers|clients|stakeholders|users|product|system|program|colleagues|department|company|organization)\b/i.test(answer)
-  const hasEmotion = /\b(excited|proud|passionate|grateful|thrilled|challenged|frustrated|determined|inspired|motivated)\b/i.test(answer)
-  const hasHesitation = /\b(um|uh|like|i think|maybe|sort of|i guess|not sure|i believe)\b/gi.test(answer)
-  const hasLearning = /\b(learned|discovered|realized|understood|grew|developed|improved|changed)\b/i.test(answer)
-  const hasChallenge = /\b(challenging|difficult|hard|struggle|obstacle|problem|issue|complex| tough)\b/i.test(answer)
-  const hasResolution = /\b(resolved|fixed|solved|overcame|addressed|implemented|created|succeeded|achieved|completed)\b/i.test(answer)
-  const hasCollaboration = /\b(we|team|together|collaborated|partnered|supported|helped|coordinated)\b/i.test(answer)
-  const hasSelfAwareness = /\b(should have|could have|would have|learned that|realized i|i recognize|i understand)\b/i.test(answer)
-  
-  const strengths: string[] = []
-  const improvements: string[] = []
-  
-  // Detect emotional tone
-  let emotionalTone = 'neutral'
-  let detectedEmotion = ''
-  for (const [emotion, { pattern, emoji }] of Object.entries(emotionPatterns)) {
-    if (pattern.test(answer)) {
-      emotionalTone = emotion
-      detectedEmotion = emoji
-      break
-    }
-  }
-  
-  // Empathetic opener selection
-  const empatheticOpener = empatheticOpeners[Math.floor(Math.random() * empatheticOpeners.length)]
-  
-  // Enhanced strengths detection with empathy
-  if (hasSTAR) {
-    strengths.push('You structured your answer clearly with a real situation - this helps interviewers follow your journey')
-  }
-  if (hasQuantification) {
-    strengths.push('Including numbers and results shows the concrete impact you made')
-  }
-  if (hasSpecificExample) {
-    strengths.push('Your specific examples make your experience tangible and memorable')
-  }
-  if (length > 150) {
-    strengths.push('You gave a thorough answer - interviewers appreciate candidates who go deep')
-  }
-  if (/therefore|however|additionally|furthermore|consequently|moreover/i.test(answer)) {
-    strengths.push('Your connection words helped your story flow naturally')
-  }
-  
-  // Emotional intelligence strengths
-  if (hasEmotion) {
-    strengths.push('Sharing your feelings makes you relatable and human to interviewers')
-  }
-  if (hasLearning && hasSelfAwareness) {
-    strengths.push('Your reflection on what you learned shows maturity and growth mindset')
-  }
-  if (hasChallenge && hasResolution) {
-    strengths.push('Describing how you overcame obstacles demonstrates resilience')
-  }
-  if (hasCollaboration) {
-    strengths.push('Your teamwork focus shows you\'ll be a good cultural fit')
-  }
-  if (length > 50 && length < 80) {
-    strengths.push('You gave a concise answer - sometimes less is more')
-  }
-  
-  // Improvement suggestions - NEVER mention speech patterns or pace
-  if (!hasSTAR) {
-    improvements.push('Try the STAR method: paint the picture of the Situation, explain the Task, describe your Action, and share the Result')
-  }
-  if (!hasQuantification) {
-    improvements.push('Adding numbers makes your impact concrete: "increased efficiency by 30%" says more than "improved efficiency"')
-  }
-  if (!hasSpecificExample) {
-    improvements.push('Specific details (project names, team sizes, tools used) make your answer memorable')
-  }
-  if (length < 50) {
-    improvements.push('A bit more detail would help - interviewers want to understand your experience')
-  }
-  
-  // For very short answers, add encouragement
-  if (length < 30) {
-    improvements.push('Take your time - there\'s no rush. Share what comes to mind first.')
-  }
-  
-  // Additional positive reinforcement for users with disabilities
-  if (hasSpeechImpairment) {
-    strengths.push('Your written communication is clear and well-structured - that\'s a real skill')
-    improvements.push('Having key talking points ready can help bridge between written and verbal communication')
-  }
-  
-  if (hasVisualImpairment) {
-    strengths.push('Your verbal description paints a clear picture for listeners')
-    improvements.push('Speaking directly to the camera helps create connection')
-  }
-  
-  // Build feedback with empathy
-  let feedback = ''
-  if (strengths.length > 0) {
-    feedback = strengths[0]
-    if (strengths.length > 1) {
-      feedback += ' ' + strengths[1]
-    }
-  }
-  
-  if (improvements.length > 0) {
-    if (feedback) feedback += '. '
-    feedback += improvements[0]
-    if (improvements.length > 1 && length > 100) {
-      feedback += '. ' + improvements[1]
-    }
-  }
-  
-  if (!feedback) {
-    feedback = 'You took the time to answer - that\'s what matters most right now.'
-  }
-  
-  // Build empathetic message
-  let empatheticMessage = empatheticOpener + ' '
-  if (emotionalTone === 'reflective' || emotionalTone === 'humble') {
-    empatheticMessage += 'Your thoughtful approach will serve you well. '
-  } else if (emotionalTone === 'confident' || emotionalTone === 'determined') {
-    empatheticMessage += 'Your confidence is compelling. '
-  } else if (emotionalTone === 'enthusiastic') {
-    empatheticMessage += 'Your passion clearly comes through. '
-  } else if (emotionalTone === 'empathetic') {
-    empatheticMessage += 'Your people skills will be valued. '
-  }
-  
-  empatheticMessage += empatheticClosers[Math.floor(Math.random() * empatheticClosers.length)]
-  
-  return { feedback, strengths, improvements, emotionalTone: detectedEmotion || '💬', empatheticMessage }
-}
 
 const questionBank: Record<string, Record<string, string[]>> = {
+  supportive: {
+    default: [
+      'Tell me about a project you enjoyed working on.',
+      'What are you most proud of in your career?',
+      'Describe a time you helped someone at work.',
+      'What do you enjoy most about your field?',
+      'Tell me about a skill you recently learned.',
+    ],
+    it: [
+      'What programming language do you enjoy most and why?',
+      'Describe a project that taught you something new.',
+      'What part of your job do you find most satisfying?',
+      'Tell me about a tool you recommend to others.',
+      'Describe how you collaborate with your team.',
+    ],
+  },
   technical: {
     default: [
       'Tell me about a technical project you worked on.',
@@ -322,1607 +163,1322 @@ const questionBank: Record<string, Record<string, string[]>> = {
       'How do you continue learning in your field?',
     ],
   },
+  challenging: {
+    default: [
+      'Tell me about the most difficult decision you had to make at work.',
+      'Describe a time when you had to defend your position against opposition.',
+      'What would you do if you realized your team was going in the wrong direction?',
+      'Tell me about a time you failed spectacularly and how you recovered.',
+      'How would you handle a situation where you disagreed with company policy?',
+    ],
+    it: [
+      'Describe a system you had to design with extreme constraints.',
+      'Tell me about a time you had to make a critical decision under pressure.',
+      'How would you handle discovering a major security flaw in production?',
+      'Describe a situation where you had to choose between quality and speed.',
+      'What would you do if asked to compromise your ethical standards?',
+    ],
+  },
 }
 
-const SignLanguageAvatar = ({ isActive }: { isActive: boolean }) => {
-  const signs = ['🤟', '👋', '✋', '👍', '👌', '🖐️', '🤲', '👆', '👇']
-  const [currentSign, setCurrentSign] = useState(0)
-
-  useEffect(() => {
-    if (isActive) {
-      const interval = setInterval(() => {
-        setCurrentSign(prev => (prev + 1) % signs.length)
-      }, 1500)
-      return () => clearInterval(interval)
-    }
-  }, [isActive])
-
-  if (!isActive) return null
-
-  return (
-    <div style={{
-      position: 'fixed',
-      bottom: '2rem',
-      right: '2rem',
-      zIndex: 100,
-      animation: 'slideUp 0.5s ease'
-    }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
-        borderRadius: '24px',
-        padding: '1.5rem',
-        boxShadow: '0 10px 40px rgba(124, 58, 237, 0.4)',
-        border: '3px solid rgba(255,255,255,0.3)',
-        minWidth: '200px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-          <div style={{
-            width: '72px',
-            height: '72px',
-            background: 'linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2.5rem',
-            border: '3px solid white',
-            animation: 'pulse 2s infinite'
-          }}>
-            {signs[currentSign]}
-          </div>
-          <div>
-            <div style={{ color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>
-              Sign Language
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-              Avatar Active
-            </div>
-          </div>
-        </div>
-        <div style={{
-          padding: '0.75rem',
-          background: 'rgba(255,255,255,0.15)',
-          borderRadius: '12px',
-          color: 'white',
-          fontSize: '0.85rem',
-          textAlign: 'center'
-        }}>
-          Translating question to sign language...
-        </div>
-      </div>
-    </div>
-  )
+const generateFeedback = (answer: string, options: { hasSpeechImpairment: boolean; hasAnxiety: boolean; hasCognitiveDisability: boolean }) => {
+  const length = answer.length
+  const hasSTAR = /when|i had|i was|i worked|i led|i managed/i.test(answer)
+  const hasQuantification = /\d+%|increased|reduced|improved|saved|managed|drove/i.test(answer)
+  const hasSpecificExample = /\b(project|team|customers|clients|stakeholders|users|product|system)\b/i.test(answer)
+  const hasEmotion = /\b(feel|felt|happy|sad|excited|frustrated|proud|passionate|grateful)\b/i.test(answer)
+  
+  let score = 50
+  const strengths: string[] = []
+  const improvements: string[] = []
+  
+  if (hasSTAR) {
+    score += 15
+    strengths.push('Great use of the STAR method to structure your answer')
+  }
+  if (hasQuantification) {
+    score += 15
+    strengths.push('You provided measurable results that demonstrate your impact')
+  }
+  if (hasSpecificExample) {
+    score += 10
+    strengths.push('Your specific examples make your experience tangible')
+  }
+  if (length > 50 && length < 200) {
+    score += 10
+    strengths.push('You kept your answer focused and concise')
+  }
+  if (length >= 200) {
+    score += 5
+    strengths.push('You provided comprehensive detail')
+  }
+  if (hasEmotion && !options.hasSpeechImpairment) {
+    score += 5
+    strengths.push('Sharing your feelings makes you relatable')
+  }
+  
+  if (!hasSTAR && !options.hasCognitiveDisability) {
+    improvements.push('Try the STAR method: Situation, Task, Action, Result')
+  }
+  if (!hasQuantification) {
+    improvements.push('Adding numbers like "increased by 30%" strengthens your answer')
+  }
+  if (!hasSpecificExample) {
+    improvements.push('Specific examples from your work make answers memorable')
+  }
+  if (length < 30 && !options.hasSpeechImpairment) {
+    improvements.push('A bit more detail would help - share what comes to mind')
+  }
+  
+  let feedback = ''
+  if (options.hasAnxiety || options.hasSpeechImpairment) {
+    feedback = strengths.length > 0 
+      ? strengths[0] + '. ' + (improvements.length > 0 ? improvements[0] : "You're doing great!")
+      : "Take your time - you're doing well!"
+  } else {
+    feedback = strengths.length > 0 
+      ? strengths[0] + (improvements.length > 0 ? '. ' + improvements[0] : '.')
+      : improvements.length > 0 ? improvements[0] : 'Keep practicing!'
+  }
+  
+  return { feedback, score: Math.min(score, 100), strengths, improvements }
 }
 
-const VideoAvatar = ({ isActive }: { isActive: boolean }) => {
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    if (isActive) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream
-          }
-        })
-        .catch(err => console.log('Camera access denied:', err))
-    } else {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach(track => track.stop())
-      }
-    }
-  }, [isActive])
-
-  if (!isActive) return null
-
-  return (
-    <div style={{
-      background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-      borderRadius: '16px',
-      padding: '1rem',
-      marginBottom: '1.5rem'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '2.5rem'
-        }}>
-          🎥
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>
-            Video Interview Mode
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>
-            Camera is active
-          </div>
-        </div>
-      </div>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{
-          width: '100%',
-          height: '280px',
-          objectFit: 'cover',
-          borderRadius: '12px',
-          background: '#0f172a'
-        }}
-      />
-    </div>
-  )
-}
-
-const DualVideoMode = ({ videoOn, signLanguageDetection }: { videoOn: boolean; signLanguageDetection: boolean }) => {
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    if (videoOn && signLanguageDetection) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream
-          }
-        })
-        .catch(err => console.log('Camera access denied:', err))
-    }
-  }, [videoOn && signLanguageDetection])
-
-  if (!videoOn || !signLanguageDetection) return null
-
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '1rem',
-      marginBottom: '1.5rem'
-    }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-        borderRadius: '16px',
-        padding: '1rem',
-        border: '2px solid #3b82f6'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem'
-          }}>
-            📹
-          </div>
-          <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>
-              Your Camera
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
-              Live video feed
-            </div>
-          </div>
-        </div>
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '180px',
-            objectFit: 'cover',
-            borderRadius: '12px',
-            background: '#0f172a'
-          }}
-        />
-      </div>
-
-      <div style={{
-        background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
-        borderRadius: '16px',
-        padding: '1rem',
-        border: '2px solid #a78bfa'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem'
-          }}>
-            🤟
-          </div>
-          <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>
-              Sign Language Detection
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
-              Real-time gesture recognition
-            </div>
-          </div>
-        </div>
-        <div style={{
-          height: '180px',
-          background: '#0f172a',
-          borderRadius: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'rgba(255,255,255,0.5)',
-          fontSize: '0.9rem'
-        }}>
-          <div style={{ fontSize: '3rem', marginBottom: '0.5rem', animation: 'pulse 2s infinite' }}>🤟</div>
-          <span>Detecting signs...</span>
-        </div>
-      </div>
-    </div>
-  )
+const simplifyQuestion = (question: string): string => {
+  const simplifications: Record<string, string> = {
+    'Tell me about yourself and your experience.': 'Tell me about yourself.',
+    'Describe a challenging situation you overcame.': 'Tell me about a hard time at work.',
+    'What are your greatest strengths and weaknesses?': 'What are you good at? What do you work on?',
+    'Where do you see yourself in 5 years?': 'What do you want to do later?',
+    'How do you handle stress and pressure?': 'How do you deal with hard days?',
+    'Describe a time you failed and what you learned.': 'Tell me about something that didn\'t go well.',
+    'Tell me about a time you worked effectively in a team.': 'Tell me about working with others.',
+  }
+  return simplifications[question] || question
 }
 
 export default function Interview() {
   const profile = JSON.parse(localStorage.getItem('userProfile') || '{}')
   const disabilities = profile.disabilities || []
-  const method = profile.method || 'text'
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+  
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setTheme(localStorage.getItem('theme') || 'dark')
+    }
+    window.addEventListener('theme-changed', handleThemeChange)
+    window.addEventListener('storage', handleThemeChange)
+    return () => {
+      window.removeEventListener('theme-changed', handleThemeChange)
+      window.removeEventListener('storage', handleThemeChange)
+    }
+  }, [])
+  
+  const themeColors: Record<string, { bg: string; text: string; accent: string; cardBg: string; border: string }> = {
+    light: { bg: '#f5f5f5', text: '#1a1a1a', accent: '#0d9488', cardBg: '#ffffff', border: '#e5e7eb' },
+    dark: { bg: '#070707', text: '#ffffff', accent: '#33BC65', cardBg: 'rgba(17, 17, 17, 0.8)', border: 'rgba(51, 188, 101, 0.15)' },
+    'high-contrast': { bg: '#000000', text: '#ffffff', accent: '#ffff00', cardBg: '#111111', border: '#ffffff' },
+    protanopia: { bg: '#1a1a2e', text: '#f0e6d3', accent: '#7eb8da', cardBg: 'rgba(30, 30, 60, 0.8)', border: 'rgba(126, 184, 218, 0.3)' },
+    deuteranopia: { bg: '#1a1a2e', text: '#f5f0e6', accent: '#b8a8d9', cardBg: 'rgba(30, 30, 50, 0.8)', border: 'rgba(184, 168, 217, 0.3)' },
+    tritanopia: { bg: '#1a1a1a', text: '#f0f0f0', accent: '#f0a07a', cardBg: 'rgba(40, 30, 30, 0.8)', border: 'rgba(240, 160, 122, 0.3)' }
+  }
+  const colors = themeColors[theme] || themeColors.dark
   
   const hasHearingImpairment = disabilities.includes('hearing')
   const hasVisualImpairment = disabilities.includes('visual')
   const hasSpeechImpairment = disabilities.includes('speech')
   const hasVerbalImpairment = disabilities.includes('verbal')
-
+  const hasMotorDisability = disabilities.includes('motor')
+  const hasNeurodivergent = disabilities.includes('neurodivergent') || disabilities.includes('adhd') || disabilities.includes('autism')
+  const hasAnxiety = disabilities.includes('anxiety')
+  const hasCognitiveDisability = disabilities.includes('cognitive') || disabilities.includes('dyslexia')
+  
   const [selectedRole, setSelectedRole] = useState(profile.role || '')
   const [selectedIndustry, setSelectedIndustry] = useState('')
-  const [selectedMode, setSelectedMode] = useState('behavioral')
-  const [resumeText, setResumeText] = useState('')
-  const [jobDescription, setJobDescription] = useState('')
-  const [session, setSession] = useState<{ questions: string[]; currentIndex: number; paused: boolean } | null>(null)
+  const [selectedMode, setSelectedMode] = useState('supportive')
+  const [session, setSession] = useState<{
+    questions: string[];
+    currentIndex: number;
+    paused: boolean;
+    answers: string[];
+    startTime: number;
+    retryCount: number;
+    pausedAt: number | null;
+  } | null>(null)
   const [answer, setAnswer] = useState('')
-  const [isListening, setIsListening] = useState(false)
-  const [isCommandMode, setIsCommandMode] = useState(false)
+  const [, setOriginalAnswer] = useState('')
   const [showFeedback, setShowFeedback] = useState(false)
-  const [feedback, setFeedback] = useState('')
-  const [signLanguageOn, setSignLanguageOn] = useState(disabilities.includes('hearing'))
-  const [videoOn, setVideoOn] = useState(hasVerbalImpairment || disabilities.includes('motor'))
-  const [audioOn, setAudioOn] = useState(!disabilities.includes('hearing') || hasVisualImpairment)
-  const [signLanguageDetection, setSignLanguageDetection] = useState(hasVerbalImpairment)
-  const [voiceCommandFeedback, setVoiceCommandFeedback] = useState('')
-  const [retryCount, setRetryCount] = useState(0)
-  const [followUpAnswer, setFollowUpAnswer] = useState('')
-  const [currentSessionData, setCurrentSessionData] = useState<{
-    questions: string[]
-    answers: string[]
-    followUpQuestions: string[]
-    followUpAnswers: string[]
-    feedback: string[]
-  }>({ questions: [], answers: [], followUpQuestions: [], followUpAnswers: [], feedback: [] })
+  const [feedback, setFeedback] = useState<{ feedback: string; score: number; strengths: string[]; improvements: string[] } | null>(null)
+  const [simplifiedMode, setSimplifiedMode] = useState(hasCognitiveDisability || hasNeurodivergent)
+  const [showTimer, setShowTimer] = useState(!hasAnxiety && !hasNeurodivergent)
+  const [timeLeft, setTimeLeft] = useState(hasAnxiety ? 300 : 120)
+  const [isPaused, setIsPaused] = useState(false)
+  const [, setQuestionStartTime] = useState(0)
+  const [anxietyLevel] = useState<'low' | 'medium' | 'high'>(hasAnxiety ? 'high' : 'low')
+  const [reassuranceShown, setReassuranceShown] = useState(false)
+  const [keyboardNav, setKeyboardNav] = useState(hasMotorDisability || hasVisualImpairment)
   
-  // Adaptive Interviewer State
-  const [adaptiveMode, setAdaptiveMode] = useState<'supportive' | 'balanced' | 'challenging'>('balanced')
-  const [confidenceLevel, setConfidenceLevel] = useState<'low' | 'medium' | 'high'>('medium')
-  const [showFollowUp, setShowFollowUp] = useState(false)
-  const [followUpQuestion, setFollowUpQuestion] = useState('')
+  const [audioOn, setAudioOn] = useState(!hasHearingImpairment || hasVisualImpairment)
+  const [videoOn, setVideoOn] = useState(hasVerbalImpairment || hasMotorDisability || hasSpeechImpairment)
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [videoSupported] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+  const [signLanguage, setSignLanguage] = useState(hasHearingImpairment)
+  const [largeText, setLargeText] = useState(hasVisualImpairment || hasCognitiveDisability)
+  const [signAvatarActive, setSignAvatarActive] = useState(false)
+  const [currentSign, setCurrentSign] = useState(0)
+  const [isRecording, setIsRecording] = useState(false)
+  const [voiceInputSupported, setVoiceInputSupported] = useState(false)
+  const [voiceInputOn, setVoiceInputOn] = useState(hasMotorDisability || hasSpeechImpairment)
   
-  const recognitionRef = useRef<any>(null)
-  const commandRecognitionRef = useRef<any>(null)
-
-  // Session history for tracking improvement
-  const [sessionHistory, setSessionHistory] = useState<{
-    date: string
-    mode: string
-    score: number
-    communication: number
-    reasoning: number
-    readiness: number
-  }[]>(() => {
-    const saved = localStorage.getItem('interviewHistory')
-    return saved ? JSON.parse(saved) : []
-  })
-
-  const voiceCommands = [
-    { command: 'repeat question', description: 'Hear the current question again', action: 'repeat' },
-    { command: 'next question', description: 'Skip to the next question', action: 'next' },
-    { command: 'previous question', description: 'Go back to the previous question', action: 'previous' },
-    { command: 'pause interview', description: 'Pause the interview', action: 'pause' },
-    { command: 'resume interview', description: 'Resume the interview', action: 'resume' },
-    { command: 'submit answer', description: 'Submit your current answer', action: 'submit' },
-    { command: 'start interview', description: 'Begin the interview', action: 'start' },
-    { command: 'listen to me', description: 'Start voice input for your answer', action: 'listen' },
-  ]
-
-  const executeCommand = (action: string) => {
-    switch (action) {
-      case 'repeat':
-        if (session && currentQuestion) {
-          speakQuestion(currentQuestion)
-          setVoiceCommandFeedback('Repeating question...')
-        }
-        break
-      case 'next':
-        nextQuestion()
-        setVoiceCommandFeedback('Moving to next question...')
-        break
-      case 'previous':
-        if (session && session.currentIndex > 0) {
-          setSession({ ...session, currentIndex: session.currentIndex - 1 })
-          setAnswer('')
-          setShowFeedback(false)
-          setVoiceCommandFeedback('Going to previous question...')
-        }
-        break
-      case 'pause':
-        if (session) {
-          setSession({ ...session, paused: true })
-          setVoiceCommandFeedback('Interview paused')
-        }
-        break
-      case 'resume':
-        if (session) {
-          setSession({ ...session, paused: false })
-          setVoiceCommandFeedback('Interview resumed')
-        }
-        break
-      case 'submit':
-        if (answer.trim()) {
-          submitAnswer()
-          setVoiceCommandFeedback('Answer submitted')
-        } else {
-          setVoiceCommandFeedback('No answer to submit')
-        }
-        break
-      case 'start':
-        if (!session && selectedRole) {
-          startInterview()
-          setVoiceCommandFeedback('Interview started')
-        }
-        break
-      case 'listen':
-        if (!hasSpeechImpairment) {
-          handleVoiceInput()
-        }
-        break
-    }
-    setTimeout(() => setVoiceCommandFeedback(''), 3000)
-  }
-
-  const startCommandRecognition = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) return
-
-    if (commandRecognitionRef.current) {
-      commandRecognitionRef.current.stop()
-      setIsCommandMode(false)
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
-        .join('')
-        .toLowerCase()
-      
-      for (const cmd of voiceCommands) {
-        if (transcript.includes(cmd.command)) {
-          executeCommand(cmd.action)
-          break
-        }
-      }
-    }
-
-    recognition.onerror = () => {
-      setIsCommandMode(false)
-    }
-
-    recognition.onend = () => {
-      if (isCommandMode) {
-        recognition.start()
-      }
-    }
-
-    commandRecognitionRef.current = recognition
-    recognition.start()
-    setIsCommandMode(true)
-    setVoiceCommandFeedback('Voice commands activated - say a command')
-    setTimeout(() => setVoiceCommandFeedback(''), 3000)
-  }
-
-  const startInterview = () => {
-    let questions: string[] = []
-    
-    const industryKey = selectedIndustry || 'default'
-    const modeKey = selectedMode
-    
-    // Get base questions from question bank
-    if (questionBank[modeKey] && questionBank[modeKey][industryKey]) {
-      questions = [...questionBank[modeKey][industryKey]]
-    } else if (questionBank[modeKey] && questionBank[modeKey]['default']) {
-      questions = [...questionBank[modeKey]['default']]
-    } else {
-      questions = [...questionBank.behavioral.default]
-    }
-    
-    // Resume-driven personalized questions
-    if (resumeText || jobDescription) {
-      const resumeQuestions = generateResumeQuestions(resumeText + ' ' + jobDescription, selectedRole || selectedIndustry || '')
-      
-      // Insert personalized questions in strategic positions
-      questions = [
-        questions[0],
-        ...resumeQuestions.slice(0, 2),
-        ...questions.slice(1, 3),
-        ...resumeQuestions.slice(2, 4),
-        ...questions.slice(3)
-      ].filter(Boolean)
-    }
-    
-    setSession({ questions, currentIndex: 0, paused: false })
-    setShowFeedback(false)
-    setFeedback('')
-    setAnswer('')
-    setRetryCount(0)
-    setCurrentSessionData({ 
-      questions, 
-      answers: [], 
-      followUpQuestions: [], 
-      followUpAnswers: [], 
-      feedback: [] 
-    })
-    
-    if (hasVisualImpairment) {
-      setTimeout(() => {
-        announce(`Interview started. Question 1 of ${questions.length}. ${questions[0]}`)
-      }, 500)
-    }
-  }
-
-  const handleVoiceInput = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-      }
-      setIsListening(false)
-      return
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Speech recognition not supported in this browser')
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
-        .join('')
-      setAnswer(prev => prev + ' ' + transcript)
-    }
-
-    recognition.onend = () => setIsListening(false)
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-  }
-
-  // Adaptive Interviewer Functions
-  const analyzeConfidence = (answerText: string): 'low' | 'medium' | 'high' => {
-    const length = answerText.length
-    const hasExamples = /example|specific|when|i led|i managed|i achieved|i increased/i.test(answerText)
-    const hasHesitation = /um|uh|like|i think|maybe|sort of|i guess|not sure/i.test(answerText)
-    const isComplete = length > 100 && hasExamples
-    
-    if (isComplete && !hasHesitation) return 'high'
-    if (length < 50 || hasHesitation) return 'low'
-    return 'medium'
-  }
-
-  // Follow-Up Question Intelligence Engine
-  
-  const extractTopics = (answer: string): string[] => {
-    const topics: string[] = []
-    const lowerAnswer = answer.toLowerCase()
-    
-    const topicPatterns: Record<string, string[]> = {
-      leadership: ['lead', 'managed', 'team', 'supervise', 'mentor', 'coach', 'direct', 'guide'],
-      technical: ['code', 'develop', 'system', 'software', 'api', 'database', 'algorithm', 'programming'],
-      problem: ['problem', 'issue', 'challenge', 'difficult', 'obstacle', 'conflict', 'resolution'],
-      achievement: ['achieved', 'increased', 'improved', 'reduced', 'saved', 'won', 'success', 'accomplish'],
-      collaboration: ['team', 'collaborate', 'work with', 'partner', 'stakeholder', 'cross-functional'],
-      communication: ['present', 'present', 'explain', 'communicate', 'report', 'document'],
-      learning: ['learn', 'study', 'train', 'develop skill', 'certification', 'course', 'workshop'],
-      innovation: ['innovat', 'creat', 'new', 'improv', 'design', 'invent', 'novel'],
-    }
-    
-    for (const [topic, patterns] of Object.entries(topicPatterns)) {
-      if (patterns.some(p => lowerAnswer.includes(p))) {
-        topics.push(topic)
-      }
-    }
-    
-    return topics
-  }
-
-  // Empathetic follow-up question generation with emotional intelligence
-  const generateContextualFollowUp = (_question: string, answer: string, confidence: 'low' | 'medium' | 'high', topics: string[], mode: string): string => {
-    
-    // Detect emotional cues in the answer
-    const hasPride = /\b(proud|accomplished|thrilled|excited|achieved|succeeded)\b/i.test(answer)
-    const hasDifficulty = /\b(challenging|difficult|hard|struggle|overcome|obstacle|stress)\b/i.test(answer)
-    const hasCollaboration = /\b(we|team|together|collaborated|supported|helped)\b/i.test(answer)
-    const hasLearning = /\b(learned|discovered|realized|understood|grew|developed)\b/i.test(answer)
-    const hasHesitation = /\b(um|uh|like|i think|maybe|perhaps|i guess)\b/gi.test(answer)
-    const hasSelfReflection = /\b(i should have|i could have|i realized|i recognize|i understand now)\b/i.test(answer)
-    
-    // Empathetic "Why" questions - probe reasoning with warmth
-    const whyFollowUps = [
-      'Why was that approach important to you?',
-      'Why did you choose that particular solution?',
-      'Why do you think that was the best way to handle it?',
-      'Why did you decide to take that specific path?',
-    ]
-    
-    // Empathetic "How" questions - probe process
-    const howFollowUps = [
-      'How did you handle the most difficult aspect of that?',
-      'How did you measure whether it was successful?',
-      'How did you coordinate with others involved?',
-      'How did you prioritize what to focus on?',
-    ]
-    
-    // "What if" questions - hypothetical scenarios
-    const whatIfFollowUps = [
-      'What would you do differently if you faced the same situation again?',
-      'What would have happened if you hadn\'t taken that approach?',
-      'What other options did you consider, and why did you reject them?',
-    ]
-    
-    // Evidence/Example questions with empathy
-    const evidenceFollowUps = [
-      'Can you give me a specific example that illustrates that?',
-      'Can you walk me through exactly what happened?',
-      'What was the most memorable part of that experience for you?',
-      'Tell me more about the details - what stands out?',
-    ]
-    
-    // Reflection questions that validate emotions
-    const reflectionFollowUps = [
-      'What did you learn from that experience that surprised you?',
-      'How has that shaped how you approach similar situations now?',
-      'What would you tell your past self about handling that?',
-      'How did that experience impact your professional growth?',
-    ]
-    
-    // Challenge questions that push gently
-    const challengeFollowUps = [
-      'What would have made that outcome even better?',
-      'What did you learn from any mistakes along the way?',
-      'How would you handle it if you faced the same challenge today?',
-    ]
-    
-    // Supportive follow-ups for less confident answers
-    const supportiveFollowUps = [
-      'That\'s a great starting point. Can you tell me more about how you felt during that?',
-      'I appreciate you sharing that. What was the most rewarding part?',
-      'That shows real self-awareness. How did that experience change you?',
-    ]
-    
-    // Topic-specific follow-ups with empathy
-    const topicSpecificFollowUps: Record<string, string[]> = {
-      leadership: [
-        'How did you motivate your team during those challenging times?',
-        'How did you handle supporting team members who were struggling?',
-        'What leadership moment are you most proud of?',
-      ],
-      technical: [
-        'What technical constraints did you need to navigate?',
-        'How did you ensure the solution would scale?',
-        'What trade-offs did you have to make, and how did you decide?',
-      ],
-      problem: [
-        'What was your first step when you realized there was a problem?',
-        'How did you keep stakeholders informed throughout?',
-        'What resources did you need, and how did you get them?',
-      ],
-      achievement: [
-        'What metrics demonstrated your success?',
-        'How did that achievement impact the broader team or company?',
-        'What recognition (formal or informal) did you receive?',
-      ],
-      collaboration: [
-        'How did you handle disagreements with team members?',
-        'How did you ensure everyone felt heard and valued?',
-        'What was the biggest challenge in working with others, and how did you address it?',
-      ],
-      learning: [
-        'How did you apply what you learned?',
-        'What resources or people helped you the most?',
-        'How long did it take to feel comfortable with that new skill?',
-      ],
-      innovation: [
-        'How did you get buy-in from others for your idea?',
-        'What resistance did you face, and how did you overcome it?',
-        'How do you typically come up with new ideas?',
-      ],
-    }
-    
-    // Determine follow-up type based on answer characteristics with empathy
-    let followUpType: 'clarification' | 'depth' | 'hypothetical' | 'evidence' | 'reflection' | 'supportive' | 'challenge' = 'depth'
-    
-    // Low confidence - be supportive
-    if (confidence === 'low' || hasHesitation.length > 2) {
-      followUpType = 'supportive'
-    }
-    // High confidence with reflection - go deeper
-    else if (hasSelfReflection && confidence === 'high') {
-      followUpType = 'challenge'
-    }
-    // Has emotion about achievement - reflect on feelings
-    else if (hasPride) {
-      followUpType = 'reflection'
-    }
-    // Has difficulty mentioned - acknowledge and probe
-    else if (hasDifficulty) {
-      followUpType = 'evidence'
-    }
-    // Collaborative answer - explore team dynamics
-    else if (hasCollaboration) {
-      followUpType = 'depth'
-    }
-    // Has learning - explore growth
-    else if (hasLearning) {
-      followUpType = 'reflection'
-    }
-    // Default based on content
-    else if (/i think|i believe|i felt|i felt like/i.test(answer)) {
-      followUpType = 'evidence'
-    } else if (/because|reason|that's why/i.test(answer)) {
-      followUpType = 'depth'
-    } else if (confidence === 'high') {
-      followUpType = Math.random() > 0.5 ? 'hypothetical' : 'depth'
-    }
-    
-    // Check for specific phrases that change the approach
-    if (/example|specific|instance|when i was|there was a time/i.test(answer)) {
-      followUpType = 'reflection'
-    }
-    
-    // Build candidate follow-ups
-    let candidates: string[] = []
-    
-    // Add topic-specific follow-ups first (most relevant)
-    for (const topic of topics) {
-      if (topicSpecificFollowUps[topic]) {
-        candidates.push(...topicSpecificFollowUps[topic])
-      }
-    }
-    
-    // Add type-based follow-ups
-    switch (followUpType) {
-      case 'supportive':
-        candidates.push(...supportiveFollowUps, ...evidenceFollowUps)
-        break
-      case 'challenge':
-        candidates.push(...challengeFollowUps, ...whatIfFollowUps)
-        break
-      case 'clarification':
-        candidates.push(...evidenceFollowUps)
-        break
-      case 'depth':
-        candidates.push(...whyFollowUps, ...howFollowUps)
-        break
-      case 'hypothetical':
-        candidates.push(...whatIfFollowUps)
-        break
-      case 'evidence':
-        candidates.push(...evidenceFollowUps)
-        break
-      case 'reflection':
-        candidates.push(...reflectionFollowUps)
-        break
-    }
-    
-    // Mode-based variation (respect the user's chosen mode)
-    if (mode === 'challenging') {
-      candidates.push(
-        ...challengeFollowUps,
-        'What evidence supports your approach?',
-        'How would a peer evaluate what you did?',
-      )
-    } else if (mode === 'supportive') {
-      candidates.push(
-        ...reflectionFollowUps,
-        'That sounds like a meaningful experience. What did you enjoy most?',
-        'How did that make you feel professionally?',
-      )
-    }
-    
-    // Remove duplicates and return random selection
-    const uniqueCandidates = [...new Set(candidates)]
-    return uniqueCandidates[Math.floor(Math.random() * uniqueCandidates.length)]
-  }
-    
-    // Determine follow-up type based on answer characteristics
-    let followUpType: 'clarification' | 'depth' | 'hypothetical' | 'evidence' | 'reflection' = 'depth'
-    
-    if (/i think|i believe|i felt|i felt like/i.test(answer)) {
-      followUpType = 'clarification'
-    } else if (/because|reason|that\'s why/i.test(answer)) {
-      followUpType = 'depth'
-    } else if (confidence === 'high') {
-      followUpType = Math.random() > 0.5 ? 'hypothetical' : 'depth'
-    } else if (confidence === 'low') {
-      followUpType = 'evidence'
-    }
-    
-    // Check for specific phrases that warrant different follow-ups
-    if (/example|specific|instance|when i was|there was a time/i.test(answer)) {
-      followUpType = 'reflection'
-    }
-    
-    // Build candidate follow-ups
-    let candidates: string[] = []
-    
-    // Add topic-specific follow-ups
-    for (const topic of topics) {
-      if (topicSpecificFollowUps[topic]) {
-        candidates.push(...topicSpecificFollowUps[topic])
-      }
-    }
-    
-    // Add type-based follow-ups
-    switch (followUpType) {
-      case 'supportive':
-        candidates.push(...supportiveFollowUps, ...evidenceFollowUps)
-        break
-      case 'challenge':
-        candidates.push(...challengeFollowUps, ...whatIfFollowUps)
-        break
-      case 'clarification':
-        candidates.push(...evidenceFollowUps)
-        break
-      case 'depth':
-        candidates.push(...whyFollowUps, ...howFollowUps)
-        break
-      case 'hypothetical':
-        candidates.push(...whatIfFollowUps)
-        break
-      case 'evidence':
-        candidates.push(...evidenceFollowUps)
-        break
-      case 'reflection':
-        candidates.push(...reflectionFollowUps)
-        break
-    }
-    
-    if (mode === 'challenging') {
-      candidates.push(
-        ...whatIfFollowUps,
-        'Can you defend that decision?',
-        'What evidence supports your approach?',
-        'How would a peer evaluate what you did?',
-      )
-    } else if (mode === 'supportive') {
-      candidates.push(
-        ...reflectionFollowUps,
-        'That sounds like a great experience. What did you enjoy most?',
-        'How did that make you feel professionally?',
-      )
-    }
-    
-    // Remove duplicates and return random selection
-    const uniqueCandidates = [...new Set(candidates)]
-    return uniqueCandidates[Math.floor(Math.random() * uniqueCandidates.length)]
-  }
-
-  const adaptInterviewerBehavior = (confidence: 'low' | 'medium' | 'high') => {
-    if (confidence === 'high') {
-      setAdaptiveMode('challenging')
-    } else if (confidence === 'low') {
-      setAdaptiveMode('supportive')
-    } else {
-      setAdaptiveMode('balanced')
-    }
-    setConfidenceLevel(confidence)
-  }
-
-  const submitAnswer = (isRetry = false) => {
-    // Analyze confidence level from answer
-    const confidence = analyzeConfidence(answer)
-    adaptInterviewerBehavior(confidence)
-    
-    // Use disability-aware feedback generation with emotional intelligence
-    const { feedback, strengths, improvements, emotionalTone, empatheticMessage } = generateDisabilityAwareFeedback(answer, hasSpeechImpairment, hasVisualImpairment)
-    
-    // Adaptive interviewer response based on confidence with empathy
-    let interviewerResponse = ''
-    if (adaptiveMode === 'challenging') {
-      interviewerResponse = "That's a strong answer. Let's dig deeper..."
-    } else if (adaptiveMode === 'supportive') {
-      interviewerResponse = "Thank you for sharing that. I appreciate your openness."
-    } else {
-      interviewerResponse = "I appreciate that response. Let me follow up on that."
-    }
-    
-    // Add encouraging prefix based on emotional tone
-    const encouragingPrefixes: Record<string, string[]> = {
-      '😊': ['That\'s wonderful! ', 'I love that energy! ', 'Your enthusiasm shines through! '],
-      '🤔': ['That\'s thoughtful! ', 'I appreciate your reflection. ', 'Good insight! '],
-      '💪': ['That\'s confident! ', 'I admire your certainty! ', 'Great conviction! '],
-      '🌱': ['That shows real growth! ', 'I appreciate your humility. ', 'That takes self-awareness! '],
-      '🎯': ['That\'s focused! ', 'Your determination shows! ', 'Great direction! '],
-      '🤝': ['That\'s the heart of teamwork! ', 'Your empathy is valuable! ', 'Great perspective! '],
-      '💬': ['Good response! ', 'Well done! ', 'Excellent! '],
-    }
-    
-    const prefixOptions = encouragingPrefixes[emotionalTone] || encouragingPrefixes['💬']
-    const selectedFeedback = interviewerResponse + ' ' + prefixOptions[Math.floor(Math.random() * prefixOptions.length)] + feedback + '\n\n' + empatheticMessage
-    
-    // Store detailed feedback for display
-    setFeedback(selectedFeedback)
-    setShowFeedback(true)
-    
-    // Save answer to session data
-    if (session && !isRetry) {
-      const updatedAnswers = [...currentSessionData.answers]
-      const updatedFeedback = [...currentSessionData.feedback]
-      updatedAnswers[session.currentIndex] = answer
-      updatedFeedback[session.currentIndex] = selectedFeedback
-      
-      let updatedFollowUpQ = [...currentSessionData.followUpQuestions]
-      let updatedFollowUpA = [...currentSessionData.followUpAnswers]
-      if (followUpQuestion) {
-        updatedFollowUpQ[session.currentIndex] = followUpQuestion
-        updatedFollowUpA[session.currentIndex] = followUpAnswer
-      }
-      
-      setCurrentSessionData({
-        ...currentSessionData,
-        answers: updatedAnswers,
-        feedback: updatedFeedback,
-        followUpQuestions: updatedFollowUpQ,
-        followUpAnswers: updatedFollowUpA
-      })
-    }
-    setFeedback(selectedFeedback)
-    setShowFeedback(true)
-    
-    // Generate follow-up question using Intelligence Engine
-    if (currentQuestion && !isRetry) {
-      const topics = extractTopics(answer)
-      const followUp = generateContextualFollowUp(currentQuestion, answer, confidence, topics, adaptiveMode)
-      setFollowUpQuestion(followUp)
-      setShowFollowUp(true)
-      setFollowUpAnswer('')
-    }
-    
-    // Calculate scores based on actual answer quality
-    let communication = 70
-    let reasoning = 65
-    let readiness = 70
-    
-    if (strengths.length >= 2) communication += 15
-    if (/star|when|i had|i worked|i led/i.test(answer)) reasoning += 15
-    if (improvements.length <= 1) readiness += 10
-    
-    communication = Math.min(communication + Math.floor(Math.random() * 15), 100)
-    reasoning = Math.min(reasoning + Math.floor(Math.random() * 15), 100)
-    readiness = Math.min(readiness + Math.floor(Math.random() * 15), 100)
-    
-    if (!isRetry && answer.trim()) {
-      const overallScore = Math.floor((communication + reasoning + readiness) / 3)
-      
-      const newHistory = [...sessionHistory, {
-        date: new Date().toISOString(),
-        mode: selectedMode,
-        score: overallScore,
-        communication,
-        reasoning,
-        readiness
-      }]
-      setSessionHistory(newHistory)
-      localStorage.setItem('interviewHistory', JSON.stringify(newHistory))
-      
-      // Save full session for replay
-      const fullSessions = JSON.parse(localStorage.getItem('interviewFullSessions') || '[]')
-      const newSession = {
-        id: `session-${Date.now()}`,
-        date: new Date().toISOString(),
-        role: selectedRole || 'General',
-        industry: selectedIndustry || 'General',
-        mode: selectedMode,
-        questions: currentSessionData.questions,
-        answers: currentSessionData.answers,
-        followUpQuestions: currentSessionData.followUpQuestions,
-        followUpAnswers: currentSessionData.followUpAnswers,
-        feedback: currentSessionData.feedback,
-        scores: { communication, reasoning, readiness },
-        analysis: {
-          strongMoments: [],
-          hesitationPoints: [],
-          missedOpportunities: []
-        }
-      }
-      fullSessions.unshift(newSession)
-      localStorage.setItem('interviewFullSessions', JSON.stringify(fullSessions.slice(0, 20)))
-    }
-    
-    if (hasVisualImpairment) {
-      let audioFeedback = `Answer submitted. ${selectedFeedback}`
-      if (followUpQuestion) {
-        audioFeedback += ` Follow-up question: ${followUpQuestion}`
-      }
-      announce(audioFeedback)
-    }
-  }
-
-  const retryAnswer = () => {
-    setRetryCount(prev => prev + 1)
-    setShowFeedback(false)
-    setFeedback('')
-    setAnswer('')
-    announce('You can now retry your answer. Take your time.')
-  }
-
-  const rephraseAnswer = () => {
-    const starters = [
-      'In my experience,',
-      'One example from my background is',
-      'To illustrate,',
-      'A relevant situation was when',
-    ]
-    const repHRased = `${starters[Math.floor(Math.random() * starters.length)]} ${answer}`
-    setAnswer(repHRased)
-    announce('Your answer has been rephrased. You can edit it further or submit.')
-  }
-
-  const submitFollowUpAnswer = () => {
-    if (!followUpAnswer.trim()) return
-    
-    // Generate final interviewer response
-    let response = "That's insightful. You've demonstrated good critical thinking."
-    if (confidenceLevel === 'high') {
-      response = "Excellent depth in your reasoning. You clearly thought this through."
-    } else if (confidenceLevel === 'low') {
-      response = "Thank you for sharing that additional perspective."
-    }
-    
-    setFeedback(prev => prev + ' ' + response)
-    
-    if (hasVisualImpairment) {
-      announce(`Follow-up answered. ${response}`)
-    }
-  }
-
-  const nextQuestion = () => {
-    if (session && session.currentIndex < session.questions.length - 1 && !session.paused) {
-      const nextIndex = session.currentIndex + 1
-      setSession({ ...session, currentIndex: nextIndex })
-      setAnswer('')
-      setShowFeedback(false)
-      setFeedback('')
-      
-      if (hasVisualImpairment) {
-        setTimeout(() => {
-          announce(`Question ${nextIndex + 1} of ${session.questions.length}. ${session.questions[nextIndex]}`)
-        }, 500)
-      }
-    }
-  }
-
-  const speakQuestion = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.9
-      window.speechSynthesis.speak(utterance)
-    }
-  }
-
-  const announce = (text: string) => {
-    if ('speechSynthesis' in window && (hasVisualImpairment || audioOn)) {
-      window.speechSynthesis.cancel()
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 1
-      utterance.pitch = 1
-      window.speechSynthesis.speak(utterance)
-    }
-  }
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoStreamRef = useRef<MediaStream | null>(null)
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   useEffect(() => {
-    return () => {
-      if (commandRecognitionRef.current) {
-        commandRecognitionRef.current.stop()
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      setVoiceInputSupported(true)
+      const recognition = new SpeechRecognition()
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+      
+      recognition.onresult = (event) => {
+        let transcript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript
+        }
+        setAnswer(prev => prev + ' ' + transcript)
       }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
+      
+      recognition.onerror = () => {
+        setIsRecording(false)
       }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
+      
+      recognition.onend = () => {
+        setIsRecording(false)
       }
+      
+      recognitionRef.current = recognition
     }
   }, [])
 
   useEffect(() => {
-    if (session && currentQuestion && (hasVisualImpairment || audioOn) && !session.paused) {
-      speakQuestion(currentQuestion)
+    if (videoOn) {
+      setVideoError(null)
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+          videoStreamRef.current = stream
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+          }
+        })
+        .catch(() => {
+          setVideoError('Camera access denied. Please allow camera access in your browser settings.')
+        })
+    } else {
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop())
+        videoStreamRef.current = null
+      }
+    }
+    
+    return () => {
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [videoOn])
+
+  useEffect(() => {
+    if (signLanguage && session) {
+      setSignAvatarActive(true)
+      const interval = setInterval(() => {
+        setCurrentSign(prev => (prev + 1) % 6)
+      }, 1500)
+      return () => {
+        clearInterval(interval)
+        setSignAvatarActive(false)
+      }
+    }
+  }, [signLanguage, session?.currentIndex])
+
+  useEffect(() => {
+    if (signLanguage && session) {
+      setSignAvatarActive(true)
     }
   }, [session?.currentIndex])
 
-  const currentQuestion = session ? session.questions[session.currentIndex] : ''
+  useEffect(() => {
+    if (session && showTimer && !isPaused && !showFeedback) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            return hasAnxiety ? 300 : 120
+          }
+          return prev - 1
+        })
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+  }, [session, showTimer, isPaused, showFeedback, hasAnxiety])
+
+  const speak = useCallback((text: string) => {
+    if ('speechSynthesis' in window && audioOn) {
+      window.speechSynthesis.cancel()
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = hasNeurodivergent ? 0.8 : 0.9
+      utterance.pitch = 1
+      speechRef.current = utterance
+      window.speechSynthesis.speak(utterance)
+    }
+  }, [audioOn, hasNeurodivergent])
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+  }
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current || !voiceInputOn) return
+    
+    if (isRecording) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    } else {
+      setAnswer('')
+      recognitionRef.current.start()
+      setIsRecording(true)
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!session || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return
+      
+      if (e.key === ' ' && !isPaused) {
+        e.preventDefault()
+        if (!showFeedback) {
+          submitAnswer()
+        } else {
+          nextQuestion()
+        }
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        repeatQuestion()
+      }
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault()
+        togglePause()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [session, showFeedback, isPaused, answer])
+
+  const repeatQuestion = () => {
+    if (session) {
+      stopSpeaking()
+      setTimeout(() => speak(session.questions[session.currentIndex]), 300)
+    }
+  }
+
+  const togglePause = () => {
+    if (!session) return
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
+    setIsPaused(!isPaused)
+    if (!isPaused) {
+      setSession({ ...session, pausedAt: Date.now() })
+    }
+  }
+
+  const startInterview = () => {
+    const mode = hasAnxiety || hasNeurodivergent ? 'supportive' : selectedMode
+    const industryQuestions = questionBank[mode]?.[selectedIndustry] || questionBank[mode]?.['default'] || questionBank['supportive']['default']
+    const shuffled = [...industryQuestions].sort(() => Math.random() - 0.5).slice(0, 5)
+    
+    const newSession = {
+      questions: shuffled,
+      currentIndex: 0,
+      paused: false,
+      answers: [],
+      startTime: Date.now(),
+      retryCount: 0,
+      pausedAt: null
+    }
+    
+    setSession(newSession)
+    setAnswer('')
+    setOriginalAnswer('')
+    setShowFeedback(false)
+    setFeedback(null)
+    setTimeLeft(hasAnxiety ? 300 : 120)
+    setIsPaused(false)
+    setQuestionStartTime(Date.now())
+    setReassuranceShown(false)
+    
+    if (audioOn || hasVisualImpairment || hasAnxiety) {
+      setTimeout(() => {
+        const intro = hasAnxiety 
+          ? "Take a breath. There's no rush. "
+          : ""
+        speak(intro + shuffled[0])
+      }, 500)
+    }
+    
+    if (voiceInputOn && voiceInputSupported && recognitionRef.current) {
+      setTimeout(() => {
+        try {
+          recognitionRef.current?.start()
+          setIsRecording(true)
+        } catch {}
+      }, 1000)
+    }
+    
+    if (videoOn && videoSupported) {
+      setTimeout(() => {
+        setVideoError(null)
+        if (videoStreamRef.current) {
+          videoStreamRef.current.getTracks().forEach(track => track.stop())
+        }
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(stream => {
+            videoStreamRef.current = stream
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream
+            }
+          })
+          .catch(() => {
+            setVideoError('Camera access denied. Please allow camera access in your browser settings.')
+          })
+      }, 500)
+    }
+  }
+
+  const submitAnswer = () => {
+    if (!answer.trim() || !session) return
+
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
+
+    const newAnswers = [...session.answers, answer]
+    const newSession = { ...session, answers: newAnswers }
+    setSession(newSession)
+
+    const newFeedback = generateFeedback(answer, {
+      hasSpeechImpairment,
+      hasAnxiety,
+      hasCognitiveDisability
+    })
+    setFeedback(newFeedback)
+    setShowFeedback(true)
+    setOriginalAnswer(answer)
+
+    saveToHistory(newAnswers, newFeedback.score)
+    stopSpeaking()
+  }
+
+  const retryAnswer = () => {
+    if (!session) return
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
+    setAnswer('')
+    setOriginalAnswer('')
+    setShowFeedback(false)
+    setFeedback(null)
+    setSession({ ...session, retryCount: session.retryCount + 1 })
+    setTimeLeft(hasAnxiety ? 300 : 120)
+  }
+
+  const nextQuestion = () => {
+    if (!session) return
+    
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
+    
+    if (session.currentIndex < session.questions.length - 1) {
+      const nextIndex = session.currentIndex + 1
+      const nextMode = anxietyLevel === 'high' ? 'supportive' : 
+                       anxietyLevel === 'medium' && nextIndex > 2 ? 'behavioral' : selectedMode
+      
+      const nextQuestions = questionBank[nextMode]?.[selectedIndustry] || questionBank[nextMode]?.['default'] || questionBank['supportive']['default']
+      const nextQuestion = nextQuestions[nextIndex % nextQuestions.length]
+      
+      setSession({ ...session, currentIndex: nextIndex })
+      setAnswer('')
+      setOriginalAnswer('')
+      setShowFeedback(false)
+      setFeedback(null)
+      setTimeLeft(hasAnxiety ? 300 : 120)
+      setIsPaused(false)
+      setQuestionStartTime(Date.now())
+      setReassuranceShown(false)
+      
+      if (audioOn || hasVisualImpairment || hasAnxiety) {
+        const intro = hasAnxiety ? "Good. Take your time with this one. " : ""
+        setTimeout(() => speak(intro + nextQuestion), 500)
+      }
+      
+      if (voiceInputOn && voiceInputSupported && recognitionRef.current) {
+        setTimeout(() => {
+          try {
+            recognitionRef.current?.start()
+            setIsRecording(true)
+          } catch {}
+        }, 1000)
+      }
+    } else {
+      setSession(null)
+    }
+  }
+
+  const saveToHistory = (_answers: string[], score: number) => {
+    const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]')
+    history.push({
+      date: new Date().toISOString(),
+      role: selectedRole || selectedIndustry,
+      mode: selectedMode,
+      score,
+      communication: Math.round(score * 0.9),
+      reasoning: Math.round(score * 0.85),
+      readiness: Math.round(score * 0.9),
+      anxietyDetected: anxietyLevel !== 'low'
+    })
+    localStorage.setItem('interviewHistory', JSON.stringify(history.slice(-20)))
+  }
+
+  const currentQuestion = session?.questions[session.currentIndex] || ''
+  const displayQuestion = simplifiedMode ? simplifyQuestion(currentQuestion) : currentQuestion
+
+  const timerProgress = hasAnxiety 
+    ? ((300 - timeLeft) / 300) * 100 
+    : ((120 - timeLeft) / 120) * 100
+
+  if (!session) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        background: colors.bg,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%)
+          `,
+          pointerEvents: 'none'
+        }} />
+
+        <header style={{
+          background: 'rgba(11, 11, 11, 0.9)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(51, 188, 101, 0.1)',
+          padding: '1.25rem 2.5rem'
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
+                borderRadius: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.35rem',
+                boxShadow: '0 4px 20px rgba(51, 188, 101, 0.3)'
+              }}>
+                ◈
+              </div>
+              <span style={{ fontSize: '1.35rem', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.5px' }}>AccessPrep</span>
+            </Link>
+            <Link to="/dashboard" style={{ fontWeight: 500, color: '#737373', textDecoration: 'none' }}>← Back</Link>
+          </div>
+        </header>
+
+        <main style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem 2rem', position: 'relative', zIndex: 1 }}>
+          <h1 style={{ 
+            fontSize: '2.25rem', 
+            fontWeight: 800, 
+            marginBottom: '0.5rem',
+            background: 'linear-gradient(135deg, #ffffff 0%, #a3a3a3 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-1px'
+          }}>
+            Mock Interview
+          </h1>
+          <p style={{ color: '#525252', marginBottom: '2rem', fontSize: '1.05rem' }}>
+            {hasAnxiety ? "Take it easy - this is a safe space to practice." : 
+             hasNeurodivergent ? "We'll go at your pace, with no pressure." :
+             "Practice with AI-powered feedback tailored to your needs"}
+          </p>
+
+          <div style={{
+            background: 'rgba(17, 17, 17, 0.8)',
+            border: '1px solid rgba(51, 188, 101, 0.15)',
+            borderRadius: '20px',
+            padding: '2rem',
+            marginBottom: '1.5rem'
+          }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', color: '#e5e5e5', fontSize: '0.95rem' }}>Select Industry</label>
+            <select 
+              value={selectedIndustry}
+              onChange={(e) => setSelectedIndustry(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                borderRadius: '12px',
+                background: 'rgba(17, 17, 17, 0.8)',
+                color: '#fff',
+                fontSize: '1rem',
+                marginBottom: '1.5rem',
+                outline: 'none'
+              }}
+            >
+              <option value="" style={{ color: '#737373' }}>Choose an industry...</option>
+              {industries.map(ind => (
+                <option key={ind.id} value={ind.id} style={{ background: '#111' }}>{ind.label}</option>
+              ))}
+            </select>
+
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', color: '#e5e5e5', fontSize: '0.95rem' }}>Target Role</label>
+            <select 
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                borderRadius: '12px',
+                background: 'rgba(17, 17, 17, 0.8)',
+                color: '#fff',
+                fontSize: '1rem',
+                marginBottom: '1.5rem',
+                outline: 'none'
+              }}
+            >
+              <option value="" style={{ color: '#737373' }}>Choose a role...</option>
+              {selectedIndustry && industries.find(i => i.id === selectedIndustry)?.roles.map(role => (
+                <option key={role} value={role} style={{ background: '#111' }}>{role}</option>
+              ))}
+            </select>
+
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', color: '#e5e5e5', fontSize: '0.95rem' }}>Interview Mode</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+              {interviewModes.map(mode => (
+                <div
+                  key={mode.id}
+                  onClick={() => setSelectedMode(mode.id)}
+                  style={{
+                    padding: '1.25rem',
+                    border: `2px solid ${selectedMode === mode.id ? '#33BC65' : 'rgba(51, 188, 101, 0.2)'}`,
+                    borderRadius: '14px',
+                    cursor: 'pointer',
+                    background: selectedMode === mode.id ? 'rgba(51, 188, 101, 0.1)' : 'transparent',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#fff', fontSize: '1rem' }}>{mode.label}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#737373' }}>{mode.description}</div>
+                </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={startInterview}
+              disabled={!selectedIndustry}
+              style={{
+                width: '100%',
+                padding: '1rem 2rem',
+                background: selectedIndustry ? 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)' : 'rgba(51, 188, 101, 0.3)',
+                border: 'none',
+                borderRadius: '12px',
+                color: selectedIndustry ? '#fff' : 'rgba(255,255,255,0.5)',
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                cursor: selectedIndustry ? 'pointer' : 'not-allowed',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {hasAnxiety ? "Start (take your time)" : hasNeurodivergent ? "Start when ready" : "Start Interview"}
+            </button>
+          </div>
+
+          <div style={{
+            background: 'rgba(17, 17, 17, 0.8)',
+            border: '1px solid rgba(51, 188, 101, 0.15)',
+            borderRadius: '20px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ fontWeight: 600, marginBottom: '1.25rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: '#33BC65' }}>◈</span> Accessibility Options
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={audioOn} 
+                  onChange={(e) => setAudioOn(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Audio Feedback</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={signLanguage} 
+                  onChange={(e) => setSignLanguage(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Sign Language</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={largeText} 
+                  onChange={(e) => setLargeText(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Large Text</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={showTimer} 
+                  onChange={(e) => setShowTimer(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Show Timer</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={simplifiedMode} 
+                  onChange={(e) => setSimplifiedMode(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Simple Questions</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={keyboardNav} 
+                  onChange={(e) => setKeyboardNav(e.target.checked)}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>Keyboard Nav</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                <input 
+                  type="checkbox" 
+                  checked={videoOn} 
+                  onChange={(e) => setVideoOn(e.target.checked)}
+                  disabled={!videoSupported}
+                  style={{ accentColor: '#33BC65' }}
+                />
+                <span>📹 Video Input {!videoSupported && '(Not supported)'}</span>
+              </label>
+              {voiceInputSupported && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#a3a3a3' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={voiceInputOn} 
+                    onChange={(e) => setVoiceInputOn(e.target.checked)}
+                    style={{ accentColor: '#33BC65' }}
+                  />
+                  <span>🎤 Voice Input</span>
+                </label>
+              )}
+            </div>
+            
+            {disabilities.length > 0 && (
+              <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(51, 188, 101, 0.1)' }}>
+                <div style={{ fontSize: '0.8rem', color: '#525252', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Your Profile
+                </div>
+                <div style={{ color: '#33BC65', fontSize: '0.95rem' }}>
+                  {disabilities.join(', ')}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#525252', textAlign: 'center' }}>
+            Keyboard: Space = Submit/Next | R = Repeat | P = Pause
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#070707',
+      position: 'relative'
+    }}>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%)
+        `,
+        pointerEvents: 'none'
+      }} />
+
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
+        background: 'rgba(11, 11, 11, 0.9)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.1)',
         padding: '1rem 2rem'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
+              borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.25rem'
+              fontSize: '1.2rem'
             }}>
-              ♿
+              ◈
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {videoSupported && (
+              <button
+                onClick={() => {
+                  if (videoOn) {
+                    if (videoStreamRef.current) {
+                      videoStreamRef.current.getTracks().forEach(track => track.stop())
+                      videoStreamRef.current = null
+                    }
+                    setVideoOn(false)
+                  } else {
+                    setVideoError(null)
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                      .then(stream => {
+                        videoStreamRef.current = stream
+                        if (videoRef.current) {
+                          videoRef.current.srcObject = stream
+                        }
+                        setVideoOn(true)
+                      })
+                      .catch(() => {
+                        setVideoError('Camera access denied.')
+                      })
+                  }
+                }}
+                style={{
+                  background: videoOn ? 'rgba(51, 188, 101, 0.2)' : 'transparent',
+                  border: '1px solid rgba(51, 188, 101, 0.3)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 1rem',
+                  color: videoOn ? '#33BC65' : '#a3a3a3',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                {videoOn ? '📹 On' : '📷 Off'}
+              </button>
+            )}
+            <button
+              onClick={togglePause}
+              style={{
+                background: isPaused ? 'rgba(51, 188, 101, 0.2)' : 'transparent',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderRadius: '8px',
+                padding: '0.5rem 1rem',
+                color: isPaused ? '#33BC65' : '#a3a3a3',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
+              }}
+            >
+              {isPaused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+            <span style={{ color: '#525252', fontSize: '0.9rem' }}>
+              {hasAnxiety ? "Take your time" : `Question ${session.currentIndex + 1} of ${session.questions.length}`}
+            </span>
+            <Link to="/dashboard" style={{ fontWeight: 500, color: '#737373', textDecoration: 'none' }}>Exit</Link>
+          </div>
         </div>
       </header>
 
-      <main style={{ padding: '2rem' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            {hasVisualImpairment && audioOn && (
-              <div style={{
-                padding: '0.75rem 1.25rem',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                borderRadius: '25px',
-                border: '2px solid #10b981',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span style={{ fontSize: '1.25rem' }}>🔊</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>Audio Mode On</span>
-              </div>
-            )}
-
-            <div style={{
-              padding: '0.75rem 1.25rem',
-              background: isCommandMode ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'white',
-              borderRadius: '25px',
-              border: `2px solid ${isCommandMode ? '#f59e0b' : '#e2e8f0'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onClick={startCommandRecognition}
-            >
-              <span style={{ fontSize: '1.25rem' }}>🎙️</span>
-              <span style={{ fontWeight: 600, color: isCommandMode ? 'white' : 'var(--dark)' }}>
-                {isCommandMode ? 'Commands On' : 'Voice Commands'}
-              </span>
+      <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', position: 'relative', zIndex: 1 }}>
+        {isPaused && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(7, 7, 7, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            flexDirection: 'column',
+            gap: '2rem'
+          }}>
+            <div style={{ fontSize: '4rem' }}>⏸</div>
+            <div style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 600 }}>Interview Paused</div>
+            <div style={{ color: '#737373', fontSize: '1rem', marginBottom: '1rem' }}>
+              Take a breath. You're in control.
             </div>
-
-            <div style={{
-              padding: '0.75rem 1.25rem',
-              background: videoOn ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' : 'white',
-              borderRadius: '25px',
-              border: `2px solid ${videoOn ? '#3b82f6' : '#e2e8f0'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onClick={() => setVideoOn(!videoOn)}
+            <button
+              onClick={togglePause}
+              style={{
+                padding: '1rem 3rem',
+                background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
             >
-              <span style={{ fontSize: '1.25rem' }}>🎥</span>
-              <span style={{ fontWeight: 600, color: videoOn ? 'white' : 'var(--dark)' }}>Video</span>
-            </div>
-
-            {!hasHearingImpairment && (
-              <div style={{
-                padding: '0.75rem 1.25rem',
-                background: audioOn ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'white',
-                borderRadius: '25px',
-                border: `2px solid ${audioOn ? '#10b981' : '#e2e8f0'}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setAudioOn(!audioOn)}
-              >
-                <span style={{ fontSize: '1.25rem' }}>🔊</span>
-                <span style={{ fontWeight: 600, color: audioOn ? 'white' : 'var(--dark)' }}>Voice</span>
-              </div>
-            )}
-
-            {hasHearingImpairment && (
-              <div style={{
-                padding: '0.75rem 1.25rem',
-                background: signLanguageOn ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' : 'white',
-                borderRadius: '25px',
-                border: `2px solid ${signLanguageOn ? '#7c3aed' : '#e2e8f0'}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setSignLanguageOn(!signLanguageOn)}
-              >
-                <span style={{ fontSize: '1.25rem' }}>🤟</span>
-                <span style={{ fontWeight: 600, color: signLanguageOn ? 'white' : 'var(--dark)' }}>Sign Language</span>
-              </div>
-            )}
-
-            {hasVerbalImpairment && (
-              <div style={{
-                padding: '0.75rem 1.25rem',
-                background: signLanguageDetection ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' : 'white',
-                borderRadius: '25px',
-                border: `2px solid ${signLanguageDetection ? '#7c3aed' : '#e2e8f0'}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setSignLanguageDetection(!signLanguageDetection)}
-              >
-                <span style={{ fontSize: '1.25rem' }}>🤟</span>
-                <span style={{ fontWeight: 600, color: signLanguageDetection ? 'white' : 'var(--dark)' }}>
-                  Sign Detection
-                </span>
-              </div>
-              )}
+              Resume When Ready
+            </button>
           </div>
+        )}
 
-              {/* Adaptive Interviewer Mode */}
-          {session && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem',
-                marginBottom: '0.75rem'
-              }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--gray)' }}>
-                  🎭 Adaptive Interviewer Style
+        {videoOn && (
+          <div style={{ marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', background: '#111', border: `2px solid ${colors.accent}40` }}>
+            {videoError ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
+                <div style={{ fontSize: '0.9rem' }}>{videoError}</div>
+                <button 
+                  onClick={() => setVideoOn(false)}
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    color: '#ef4444',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Disable Video
+                </button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block', backgroundColor: '#000' }}
+                />
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '8px', 
+                  right: '8px',
+                  display: 'flex',
+                  gap: '8px'
+                }}>
+                  <button 
+                    onClick={() => setVideoOn(false)}
+                    style={{
+                      padding: '6px 12px',
+                      background: 'rgba(239, 68, 68, 0.9)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    ✕ Off
+                  </button>
                 </div>
-                <div style={{
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
-                  color: 'white',
-                  padding: '0.25rem 0.75rem',
-                  borderRadius: '12px',
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: '8px', 
+                  left: '8px', 
+                  background: 'rgba(0,0,0,0.7)', 
+                  color: '#fff', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.25rem'
+                  gap: '4px'
                 }}>
-                  <span>🧠</span> Follow-Up AI Active
+                  <span style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    borderRadius: '50%', 
+                    background: '#22c55e',
+                    animation: 'pulse 1s infinite'
+                  }} />
+                  📹 Live
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => { setAdaptiveMode('supportive'); }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: adaptiveMode === 'supportive' ? '#d1fae5' : 'white',
-                    border: `2px solid ${adaptiveMode === 'supportive' ? '#10b981' : '#e2e8f0'}`,
-                    borderRadius: '20px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    fontWeight: adaptiveMode === 'supportive' ? 600 : 400
-                  }}
-                >
-                  😊 Supportive
-                </button>
-                <button
-                  onClick={() => { setAdaptiveMode('balanced'); }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: adaptiveMode === 'balanced' ? '#dbeafe' : 'white',
-                    border: `2px solid ${adaptiveMode === 'balanced' ? '#3b82f6' : '#e2e8f0'}`,
-                    borderRadius: '20px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    fontWeight: adaptiveMode === 'balanced' ? 600 : 400
-                  }}
-                >
-                  🎯 Balanced
-                </button>
-                <button
-                  onClick={() => { setAdaptiveMode('challenging'); }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: adaptiveMode === 'challenging' ? '#fee2e2' : 'white',
-                    border: `2px solid ${adaptiveMode === 'challenging' ? '#ef4444' : '#e2e8f0'}`,
-                    borderRadius: '20px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    fontWeight: adaptiveMode === 'challenging' ? 600 : 400
-                  }}
-                >
-                  😰 Challenging
-                </button>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--gray)', marginTop: '0.5rem' }}>
-                {adaptiveMode === 'supportive' && '😊 Friendly interviewer who asks simple follow-ups and goes easy on you'}
-                {adaptiveMode === 'balanced' && '🎯 Standard interview with balanced follow-up questions'}
-                {adaptiveMode === 'challenging' && '😰 Tough interviewer who digs deeper with harder follow-ups'}
-              </p>
+            )}
+          </div>
+        )}
+
+        {signLanguage && (
+          <div style={{
+            marginBottom: '1.5rem',
+            padding: '1.5rem',
+            background: 'rgba(17, 17, 17, 0.9)',
+            border: '1px solid rgba(51, 188, 101, 0.3)',
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.5rem'
+          }}>
+            <div style={{
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, rgba(51, 188, 101, 0.3) 0%, rgba(18, 220, 239, 0.2) 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '3rem',
+              flexShrink: 0,
+              animation: signAvatarActive ? 'sign-pulse 1.5s ease-in-out infinite' : 'none',
+              boxShadow: signAvatarActive ? '0 0 30px rgba(51, 188, 101, 0.5)' : 'none'
+            }}>
+              {['🤟', '👋', '✋', '🤲', '👐', '👌'][currentSign]}
             </div>
-          )}
+            <div>
+              <div style={{ fontWeight: 600, color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>🤟</span>
+                Sign Language Avatar
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  padding: '0.2rem 0.5rem', 
+                  background: signAvatarActive ? 'rgba(51, 188, 101, 0.3)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: '10px',
+                  color: signAvatarActive ? '#5DFFD9' : '#737373'
+                }}>
+                  {signAvatarActive ? '● Active' : '○ Ready'}
+                </span>
+              </div>
+              <div style={{ color: '#737373', fontSize: '0.9rem' }}>
+                {signAvatarActive 
+                  ? 'Translating question to ASL signs...' 
+                  : 'Sign language avatar will appear when question is asked'}
+              </div>
+            </div>
+          </div>
+        )}
 
-          {!session && (
-            <div className="card animate-slide-up">
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-                🎯 Practice Interview
+        <div style={{
+          background: 'rgba(17, 17, 17, 0.8)',
+          border: '1px solid rgba(51, 188, 101, 0.15)',
+          borderRadius: '20px',
+          padding: '2rem',
+          marginBottom: '1.5rem'
+        }}>
+          <div style={{ 
+            padding: '1.5rem', 
+            background: anxietyLevel === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(51, 188, 101, 0.1)', 
+            borderRadius: '14px',
+            marginBottom: '1.5rem',
+            border: anxietyLevel === 'high' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(51, 188, 101, 0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+              <h2 style={{ 
+                fontSize: largeText ? '1.5rem' : '1.25rem', 
+                fontWeight: 700, 
+                color: '#fff',
+                lineHeight: 1.4
+              }}>
+                {displayQuestion}
               </h2>
-
-              {/* Industry Selection */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">🏭 Industry</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {industries.map(ind => (
-                    <button
-                      key={ind.id}
-                      onClick={() => setSelectedIndustry(ind.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: selectedIndustry === ind.id ? 'var(--primary)' : 'var(--bg-primary)',
-                        color: selectedIndustry === ind.id ? 'white' : 'var(--text-primary)',
-                        border: `2px solid ${selectedIndustry === ind.id ? 'var(--primary)' : 'var(--border-color)'}`,
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: selectedIndustry === ind.id ? 600 : 400,
-                        fontSize: '0.9rem'
-                      }}
-                    >
-                      {ind.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Interview Mode Selection */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">🎭 Interview Mode</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  {interviewModes.map(mode => (
-                    <div
-                      key={mode.id}
-                      onClick={() => setSelectedMode(mode.id)}
-                      style={{
-                        padding: '1rem',
-                        background: selectedMode === mode.id ? 'rgba(124, 58, 237, 0.1)' : 'var(--bg-primary)',
-                        border: `2px solid ${selectedMode === mode.id ? 'var(--primary)' : 'var(--border-color)'}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{mode.label}</div>
-                      <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{mode.description}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Job Role Selection */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">Select Job Role</label>
-                <select
-                  className="input"
-                  value={selectedRole}
-                  onChange={e => setSelectedRole(e.target.value)}
-                >
-                  <option value="">Choose a role...</option>
-                  {selectedIndustry 
-                    ? industries.find(i => i.id === selectedIndustry)?.roles.map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))
-                    : industries.flatMap(i => i.roles).sort().map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))
-                  }
-                </select>
-              </div>
-
-              {/* Resume Text Input */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">📄 Your Resume (Optional)</label>
-                <textarea
-                  className="input"
-                  value={resumeText}
-                  onChange={e => setResumeText(e.target.value)}
-                  placeholder="Paste your resume content here for personalized questions..."
-                  rows={4}
-                />
-                <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.5rem' }}>
-                  Questions will be tailored to your experience
-                </p>
-              </div>
-
-              {/* Job Description Input */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">📋 Job Description (Optional)</label>
-                <textarea
-                  className="input"
-                  value={jobDescription}
-                  onChange={e => setJobDescription(e.target.value)}
-                  placeholder="Paste the job description for targeted questions..."
-                  rows={3}
-                />
-              </div>
-
-              <button 
-                onClick={startInterview}
-                className="btn btn-primary btn-lg"
-                style={{ width: '100%' }}
-                disabled={!selectedRole}
+              <button
+                onClick={repeatQuestion}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#33BC65',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem'
+                }}
+                title="Repeat question (R)"
               >
-                Start Interview 🚀
+                🔊
+              </button>
+            </div>
+            
+            {showTimer && !hasAnxiety && (
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ 
+                  height: '4px', 
+                  background: 'rgba(51, 188, 101, 0.2)', 
+                  borderRadius: '2px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ 
+                    height: '100%', 
+                    width: `${100 - timerProgress}%`,
+                    background: timerProgress > 80 ? '#ef4444' : timerProgress > 50 ? '#f59e0b' : '#33BC65',
+                    transition: 'width 1s linear'
+                  }} />
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#525252', marginTop: '0.5rem', textAlign: 'right' }}>
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </div>
+              </div>
+            )}
+
+            {hasAnxiety && !reassuranceShown && (
+              <div style={{ 
+                marginTop: '1rem', 
+                padding: '0.75rem 1rem',
+                background: 'rgba(51, 188, 101, 0.1)',
+                borderRadius: '8px',
+                color: '#33BC65',
+                fontSize: '0.9rem'
+              }}>
+                💚 Take your time. There's no rush. You can pause anytime.
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            {voiceInputSupported && (
+              <button
+                onClick={toggleVoiceInput}
+                style={{
+                  position: 'absolute',
+                  top: '0.75rem',
+                  right: '0.75rem',
+                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(51, 188, 101, 0.2)',
+                  border: `1px solid ${isRecording ? '#ef4444' : 'rgba(51, 188, 101, 0.3)'}`,
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.75rem',
+                  color: isRecording ? '#ef4444' : '#33BC65',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  zIndex: 10,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: isRecording ? '#ef4444' : '#33BC65',
+                  animation: isRecording ? 'pulse 1s infinite' : 'none'
+                }} />
+                {isRecording ? 'Stop' : '🎤 Voice'}
+              </button>
+            )}
+            <textarea
+              ref={inputRef}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder={
+                hasSpeechImpairment 
+                  ? "Type your answer here... (No need to worry about fluency - we focus on content)"
+                  : hasCognitiveDisability
+                  ? "Take your time. Write what comes to mind."
+                  : "Speak or type your answer..."
+              }
+              disabled={showFeedback}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                paddingRight: voiceInputSupported ? '6rem' : '1rem',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                borderRadius: '12px',
+                background: 'rgba(17, 17, 17, 0.8)',
+                color: '#fff',
+                fontSize: largeText ? '1.2rem' : '1rem',
+                minHeight: '160px',
+                resize: 'vertical',
+                outline: 'none',
+                fontFamily: 'inherit',
+                lineHeight: 1.6
+              }}
+            />
+          </div>
+
+          {!showFeedback ? (
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={submitAnswer}
+                disabled={!answer.trim()}
+                style={{
+                  flex: 1,
+                  padding: '1rem 2rem',
+                  background: answer.trim() ? 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)' : 'rgba(51, 188, 101, 0.3)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: answer.trim() ? '#fff' : 'rgba(255,255,255,0.5)',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: answer.trim() ? 'pointer' : 'not-allowed',
+                  minWidth: '200px'
+                }}
+              >
+                Submit Answer (Space)
+              </button>
+              {session.retryCount < 2 && (
+                <button 
+                  onClick={retryAnswer}
+                  style={{
+                    padding: '1rem 1.5rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(51, 188, 101, 0.3)',
+                    borderRadius: '12px',
+                    color: '#a3a3a3',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ marginTop: '1.5rem' }}>
+              {feedback && (
+                <div style={{ 
+                  padding: '1.5rem', 
+                  background: feedback.score >= 70 ? 'rgba(51, 188, 101, 0.1)' : feedback.score >= 50 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                  borderRadius: '14px',
+                  marginBottom: '1.5rem',
+                  border: `1px solid ${feedback.score >= 70 ? 'rgba(51, 188, 101, 0.3)' : feedback.score >= 50 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                    <span style={{ 
+                      fontSize: '2.5rem', 
+                      fontWeight: 800,
+                      color: feedback.score >= 70 ? '#33BC65' : feedback.score >= 50 ? '#f59e0b' : '#ef4444'
+                    }}>
+                      {feedback.score}%
+                    </span>
+                    <div>
+                      <div style={{ color: '#fff', fontWeight: 600 }}>Score</div>
+                      <div style={{ color: '#737373', fontSize: '0.85rem' }}>
+                        {feedback.score >= 70 ? "Great job!" : feedback.score >= 50 ? "Good effort!" : "Keep practicing!"}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p style={{ marginBottom: '1rem', lineHeight: 1.7, color: '#e5e5e5', fontSize: largeText ? '1.1rem' : '0.95rem' }}>
+                    {feedback.feedback}
+                  </p>
+                  
+                  {feedback.strengths.length > 0 && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <strong style={{ color: '#33BC65', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        ✓ {feedback.strengths[0]}
+                      </strong>
+                    </div>
+                  )}
+                  {feedback.improvements.length > 0 && (
+                    <div style={{ color: '#a3a3a3', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      💡 {feedback.improvements[0]}
+                    </div>
+                  )}
+
+                  {hasSpeechImpairment && (
+                    <div style={{ 
+                      marginTop: '1rem', 
+                      padding: '0.75rem',
+                      background: 'rgba(51, 188, 101, 0.1)',
+                      borderRadius: '8px',
+                      color: '#33BC65',
+                      fontSize: '0.85rem'
+                    }}>
+                      Note: We evaluate content quality only - never fluency or speed.
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <button 
+                onClick={nextQuestion}
+                style={{
+                  width: '100%',
+                  padding: '1rem 2rem',
+                  background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {session.currentIndex < session.questions.length - 1 
+                  ? (hasAnxiety ? "Next (when ready)" : "Next Question →")
+                  : "Finish Interview"}
               </button>
             </div>
           )}
+        </div>
 
-          {session && (
-            <div>
-              {voiceCommandFeedback && (
-                <div style={{
-                  padding: '1rem 1.5rem',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  borderRadius: '12px',
-                  marginBottom: '1.5rem',
-                  color: 'white',
-                  fontWeight: 600,
-                  textAlign: 'center',
-                  animation: 'slideUp 0.3s ease'
-                }}>
-                  🎙️ {voiceCommandFeedback}
-                </div>
-              )}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+          {session.questions.map((_, idx) => (
+            <div
+              key={idx}
+              style={{
+                width: idx === session.currentIndex ? '24px' : '10px',
+                height: '10px',
+                borderRadius: '5px',
+                background: idx === session.currentIndex 
+                  ? '#33BC65' 
+                  : idx < session.currentIndex 
+                    ? '#28a653' 
+                    : 'rgba(51, 188, 101, 0.2)',
+                transition: 'all 0.3s ease'
+              }}
+            />
+          ))}
+        </div>
 
-              {session.paused && (
-                <div style={{
-                  padding: '2rem',
-                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                  borderRadius: '16px',
-                  marginBottom: '1.5rem',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏸️</div>
-                  <h3 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>Interview Paused</h3>
-                  <p>Say "resume interview" to continue or click below</p>
-                  <button 
-                    onClick={() => setSession({ ...session, paused: false })}
-                    className="btn btn-primary"
-                    style={{ marginTop: '1rem' }}
-                  >
-                    Resume Interview ▶️
-                  </button>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 600 }}>Question {session.currentIndex + 1} of {session.questions.length}</span>
-                  <span style={{ color: 'var(--gray)' }}>{Math.round(((session.currentIndex + 1) / session.questions.length) * 100)}%</span>
-                </div>
-                <div style={{ height: '8px', background: 'var(--border)', borderRadius: '4px' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${((session.currentIndex + 1) / session.questions.length) * 100}%`,
-                    background: 'linear-gradient(90deg, var(--primary), var(--primary-light))',
-                    borderRadius: '4px'
-                  }} />
-                </div>
-              </div>
-
-              {videoOn && <VideoAvatar isActive={videoOn} />}
-              <DualVideoMode videoOn={videoOn} signLanguageDetection={signLanguageDetection} />
-
-              <div className="card">
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                  {currentQuestion}
-                </h3>
-
-                {(hasVisualImpairment || audioOn) && !hasHearingImpairment && (
-                  <button 
-                    onClick={() => speakQuestion(currentQuestion)}
-                    className="btn btn-secondary"
-                    style={{ marginBottom: '1rem' }}
-                  >
-                    🔊 Listen to Question
-                  </button>
-                )}
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="label">Your Answer</label>
-                  <textarea
-                    className="input"
-                    value={answer}
-                    onChange={e => setAnswer(e.target.value)}
-                    placeholder={hasSpeechImpairment || method === 'text' ? "Type your answer here..." : "Speak or type your answer..."}
-                    rows={6}
-                    style={{ minHeight: '150px' }}
-                  />
-                </div>
-
-                {(method === 'voice' || method === 'hybrid') && !hasSpeechImpairment && (
-                  <button 
-                    onClick={handleVoiceInput}
-                    className="btn"
-                    style={{
-                      background: isListening ? '#fee2e2' : 'var(--light)',
-                      marginBottom: '1rem'
-                    }}
-                  >
-                    {isListening ? '⏹️ Listening...' : '🎤 Click to Speak'}
-                  </button>
-                )}
-
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <button 
-                    onClick={() => submitAnswer(false)}
-                    className="btn btn-primary"
-                    style={{ flex: 1, minWidth: '150px' }}
-                    disabled={!answer.trim()}
-                  >
-                    Submit Answer
-                  </button>
-                  {showFeedback && (
-                    <button onClick={retryAnswer} className="btn btn-secondary">
-                      🔄 Retry
-                    </button>
-                  )}
-                  {answer.trim() && !showFeedback && (
-                    <button onClick={rephraseAnswer} className="btn btn-secondary">
-                      ✨ Rephrase
-                    </button>
-                  )}
-                  {session.currentIndex < session.questions.length - 1 && showFeedback && (
-                    <button onClick={nextQuestion} className="btn btn-secondary">
-                      Next →
-                    </button>
-                  )}
-                </div>
-
-                {retryCount > 0 && (
-                  <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--primary)' }}>
-                    You've retried {retryCount} time(s). Keep practicing - there's no penalty for trying again!
-                  </p>
-                )}
-              </div>
-
-              {showFeedback && (
-                <div className="card" style={{
-                  marginTop: '1.5rem',
-                  background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-                }}>
-                  <h4 style={{ fontWeight: 700, marginBottom: '0.75rem', color: '#065f46' }}>✨ Feedback</h4>
-                  <p style={{ color: '#065f46', marginBottom: '1rem' }}>{feedback}</p>
-                  
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ fontWeight: 600, color: '#065f46', fontSize: '0.9rem', marginBottom: '0.5rem' }}>✓ What you did well:</div>
-                    <ul style={{ paddingLeft: '1.25rem', color: '#065f46', fontSize: '0.85rem' }}>
-                      <li>Clearly communicated your experience and background</li>
-                      <li>Structure your answers with relevant examples</li>
-                      <li>Keep practicing to build more confidence</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <div style={{ fontWeight: 600, color: '#92400e', fontSize: '0.9rem', marginBottom: '0.5rem' }}>→ Suggestions for improvement:</div>
-                    <ul style={{ paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.85rem' }}>
-                      <li>Try using the STAR method to structure your answers</li>
-                      <li>Add specific numbers or metrics to show impact</li>
-                      <li>Include more details about your specific accomplishments</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* Follow-up Question */}
-              {showFollowUp && followUpQuestion ? (
-                <div className="card" style={{
-                  marginTop: '1.5rem',
-                  background: adaptiveMode === 'challenging' ? '#fee2e2' : (adaptiveMode === 'supportive' ? '#d1fae5' : '#dbeafe'),
-                  borderLeft: `4px solid ${adaptiveMode === 'challenging' ? '#ef4444' : (adaptiveMode === 'supportive' ? '#10b981' : '#3b82f6')}`
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '1.25rem' }}>
-                      {adaptiveMode === 'challenging' ? '😰' : (adaptiveMode === 'supportive' ? '😊' : '🎯')}
-                    </span>
-                    <h4 style={{ fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                      Follow-up Question
-                    </h4>
-                    <span style={{ 
-                      marginLeft: 'auto', 
-                      background: '#7c3aed', 
-                      color: 'white', 
-                      padding: '0.25rem 0.75rem', 
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600
-                    }}>
-                      AI Generated
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '1.1rem', color: '#1e293b', fontWeight: 500 }}>
-                    {followUpQuestion}
-                  </p>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.75rem' }}>
-                    This is a context-aware follow-up based on your previous answer.
-                  </p>
-                  
-                  <div style={{ marginTop: '1rem' }}>
-                    <textarea
-                      className="input"
-                      value={followUpAnswer}
-                      onChange={e => setFollowUpAnswer(e.target.value)}
-                      placeholder="Type your follow-up answer here..."
-                      rows={4}
-                      style={{ marginBottom: '0.75rem' }}
-                    />
-                    <button 
-                      onClick={submitFollowUpAnswer}
-                      className="btn btn-primary"
-                      disabled={!followUpAnswer.trim()}
-                      style={{ width: '100%' }}
-                    >
-                      Submit Follow-up Answer
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
+        <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#525252', textAlign: 'center' }}>
+          Space: Submit/Next | R: Repeat | P: Pause
         </div>
       </main>
-
-      <SignLanguageAvatar 
-        isActive={signLanguageOn && !!session} 
-      />
     </div>
   )
 }

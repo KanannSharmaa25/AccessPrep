@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface StrategySection {
   title: string
@@ -338,6 +339,7 @@ const disabilityStrategies: Record<string, {
 }
 
 export default function Strategy() {
+  const { colors } = useTheme()
   const profile = JSON.parse(localStorage.getItem('userProfile') || '{}')
   const disabilities = profile.disabilities || []
   const method = profile.method || 'text'
@@ -365,11 +367,43 @@ export default function Strategy() {
   const currentStrategies = activeDisability ? disabilityStrategies[activeDisability] : null
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
@@ -387,7 +421,7 @@ export default function Strategy() {
             </div>
             <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+            <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>← Back</Link>
         </div>
       </header>
 
@@ -396,29 +430,53 @@ export default function Strategy() {
           <div className="animate-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎯</div>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
                 Interview Strategy Builder
               </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--gray)', maxWidth: '600px', margin: '0 auto' }}>
+              <p style={{ fontSize: '1.1rem', color: '#a3a3a3', maxWidth: '600px', margin: '0 auto' }}>
                 Personalized strategies to help you navigate interviews with confidence based on your unique needs.
               </p>
             </div>
 
             {disabilities.length === 0 ? (
-              <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                backdropFilter: 'blur(10px)'
+              }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
-                <h3 style={{ marginBottom: '1rem' }}>Complete Your Profile First</h3>
-                <p style={{ color: 'var(--gray)', marginBottom: '1.5rem' }}>
+                <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Complete Your Profile First</h3>
+                <p style={{ color: '#a3a3a3', marginBottom: '1.5rem' }}>
                   Set up your disability profile to receive personalized interview strategies.
                 </p>
-                <Link to="/profile" className="btn btn-primary">
+                <Link to="/profile" style={{
+                  background: '#33BC65',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '1rem 2rem',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  textDecoration: 'none',
+                  cursor: 'pointer'
+                }}>
                   Set Up Profile
                 </Link>
               </div>
             ) : (
               <>
-                <div className="card" style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ marginBottom: '1rem' }}>🎯 Your Disability Profile</h3>
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.2)',
+                  padding: '1.5rem',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>🎯 Your Disability Profile</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                     {disabilities.map((d: string) => (
                       <button
@@ -426,9 +484,9 @@ export default function Strategy() {
                         onClick={() => setActiveDisability(d)}
                         style={{
                           padding: '0.5rem 1rem',
-                          background: activeDisability === d ? 'var(--primary)' : 'var(--bg-primary)',
-                          color: activeDisability === d ? 'white' : 'var(--text-primary)',
-                          border: `2px solid ${activeDisability === d ? 'var(--primary)' : 'var(--border)'}`,
+                          background: activeDisability === d ? '#33BC65' : 'rgba(255, 255, 255, 0.05)',
+                          color: activeDisability === d ? '#ffffff' : '#a3a3a3',
+                          border: `2px solid ${activeDisability === d ? '#33BC65' : 'rgba(51, 188, 101, 0.3)'}`,
                           borderRadius: '20px',
                           cursor: 'pointer',
                           fontWeight: activeDisability === d ? 600 : 400,
@@ -441,22 +499,27 @@ export default function Strategy() {
                       </button>
                     ))}
                   </div>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--gray)' }}>
-                    Your preferred interaction method: <strong>{method}</strong>
+                  <p style={{ fontSize: '0.9rem', color: '#a3a3a3' }}>
+                    Your preferred interaction method: <strong style={{ color: '#ffffff' }}>{method}</strong>
                   </p>
                 </div>
 
                 {currentStrategies && (
                   <div style={{ display: 'grid', gap: '1.5rem' }}>
                     {Object.entries(currentStrategies).map(([key, section]) => (
-                      <div key={key} className="card" style={{
-                        borderLeft: `4px solid var(--primary)`
+                      <div key={key} style={{
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(51, 188, 101, 0.2)',
+                        borderLeft: `4px solid #33BC65`,
+                        padding: '1.5rem',
+                        backdropFilter: 'blur(10px)'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                           <span style={{ fontSize: '1.5rem' }}>{section.icon}</span>
-                          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{section.title}</h3>
+                          <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#ffffff' }}>{section.title}</h3>
                         </div>
-                        <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
+                        <ul style={{ paddingLeft: '1.5rem', margin: 0, color: '#a3a3a3' }}>
                           {section.tips.map((tip, idx) => (
                             <li key={idx} style={{ marginBottom: '0.5rem', lineHeight: 1.6 }}>
                               {tip}
@@ -468,12 +531,18 @@ export default function Strategy() {
                   </div>
                 )}
 
-                <div className="card" style={{ marginTop: '1.5rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  background: 'rgba(51, 188, 101, 0.1)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(51, 188, 101, 0.3)',
+                  padding: '1.5rem'
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                     <span style={{ fontSize: '1.5rem' }}>💡</span>
-                    <h3 style={{ margin: 0 }}>Pro Tips</h3>
+                    <h3 style={{ margin: 0, color: '#5DFFD9' }}>Pro Tips</h3>
                   </div>
-                  <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
+                  <ul style={{ paddingLeft: '1.5rem', margin: 0, color: '#a3a3a3' }}>
                     <li style={{ marginBottom: '0.5rem' }}>Practice these strategies in mock interviews to build muscle memory</li>
                     <li style={{ marginBottom: '0.5rem' }}>Request accommodations early - employers are required to provide reasonable accommodations</li>
                     <li style={{ marginBottom: '0.5rem' }}>Use the AI Mentor to practice specific scenarios</li>
@@ -485,9 +554,16 @@ export default function Strategy() {
             )}
 
             {disabilities.length > 0 && (
-              <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>📖 Strategies for Other Disability Types</h3>
-                <p style={{ marginBottom: '1rem', color: 'var(--gray)' }}>
+              <div style={{ 
+                marginTop: '1.5rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>📖 Strategies for Other Disability Types</h3>
+                <p style={{ marginBottom: '1rem', color: '#a3a3a3' }}>
                   Explore strategies designed for different disability types to broaden your approach.
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -499,9 +575,9 @@ export default function Strategy() {
                         onClick={() => setActiveDisability(d)}
                         style={{
                           padding: '0.5rem 1rem',
-                          background: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                          border: '2px solid var(--border)',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          color: '#a3a3a3',
+                          border: '2px solid rgba(51, 188, 101, 0.3)',
                           borderRadius: '20px',
                           cursor: 'pointer',
                           fontWeight: 400,
@@ -518,13 +594,43 @@ export default function Strategy() {
             )}
 
             <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/interview" className="btn btn-primary">
+              <Link to="/interview" style={{
+                background: '#33BC65',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 🎤 Start Practice Interview
               </Link>
-              <Link to="/mentor" className="btn btn-secondary">
+              <Link to="/mentor" style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#a3a3a3',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 🤖 AI Mentor
               </Link>
-              <Link to="/progress" className="btn btn-secondary">
+              <Link to="/progress" style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#a3a3a3',
+                border: '1px solid rgba(51, 188, 101, 0.3)',
+                borderRadius: '12px',
+                padding: '1rem 2rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}>
                 📊 View Progress
               </Link>
             </div>

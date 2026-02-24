@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 
 interface TechnicalScenario {
   id: string
@@ -1463,6 +1464,7 @@ const domainLabels: Record<string, { label: string; icon: string }> = {
 }
 
 export default function DeepInterview() {
+  const { colors } = useTheme()
   const [selectedDomain, setSelectedDomain] = useState<string>('')
   const [selectedScenario, setSelectedScenario] = useState<TechnicalScenario | null>(null)
   const [userAnswer, setUserAnswer] = useState('')
@@ -1509,18 +1511,50 @@ export default function DeepInterview() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: colors.bg,
+      position: 'relative',
+      overflow: 'hidden',
+      color: colors.text,
+      transition: 'background 0.3s ease, color 0.3s ease'
+    }}>
+      {/* Animated background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 20% 20%, rgba(51, 188, 101, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(18, 220, 239, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(95, 255, 217, 0.03) 0%, transparent 70%)
+        `,
+        pointerEvents: 'none'
+      }} />
+      {/* Grid pattern overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(51, 188, 101, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(51, 188, 101, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        pointerEvents: 'none'
+      }} />
       <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border)',
-        padding: '1rem 2rem'
+        background: 'rgba(7, 7, 7, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(51, 188, 101, 0.2)',
+        padding: '1rem 2rem',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+              background: 'linear-gradient(135deg, #33BC65 0%, #28a653 100%)',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
@@ -1529,29 +1563,35 @@ export default function DeepInterview() {
             }}>
               ♿
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>AccessPrep</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#33BC65' }}>AccessPrep</span>
           </Link>
-          <Link to="/dashboard" style={{ fontWeight: 600, color: 'var(--dark)', textDecoration: 'none' }}>← Back</Link>
+          <Link to="/dashboard" style={{ fontWeight: 600, color: '#a3a3a3', textDecoration: 'none' }}>← Back</Link>
         </div>
       </header>
 
-      <main style={{ padding: '2rem' }}>
+      <main style={{ padding: '2rem', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div className="animate-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧠</div>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffffff' }}>
                 Domain-Specific Deep Interview
               </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--gray)', maxWidth: '600px', margin: '0 auto' }}>
+              <p style={{ fontSize: '1.1rem', color: '#a3a3a3', maxWidth: '600px', margin: '0 auto' }}>
                 Technical role-specific questions that evaluate your problem-solving approach, 
                 not just your answers. Real interview preparation.
               </p>
             </div>
 
             {!selectedDomain ? (
-              <div className="card">
-                <h3 style={{ marginBottom: '1rem' }}>Select Your Technical Domain</h3>
+              <div style={{ 
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '16px',
+                border: '1px solid rgba(51, 188, 101, 0.2)',
+                padding: '1.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <h3 style={{ marginBottom: '1rem', color: '#ffffff' }}>Select Your Technical Domain</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                   {Object.entries(domainLabels).map(([key, { label, icon }]) => (
                     <button
@@ -1559,15 +1599,16 @@ export default function DeepInterview() {
                       onClick={() => { setSelectedDomain(key); setSelectedScenario(null); }}
                       style={{
                         padding: '1.5rem',
-                        background: 'var(--bg-primary)',
-                        border: '2px solid var(--border)',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '2px solid rgba(51, 188, 101, 0.3)',
                         borderRadius: '12px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        color: '#a3a3a3'
                       }}
                     >
                       <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{icon}</div>
-                      <div style={{ fontWeight: 600 }}>{label}</div>
+                      <div style={{ fontWeight: 600, color: '#ffffff' }}>{label}</div>
                     </button>
                   ))}
                 </div>
@@ -1576,8 +1617,16 @@ export default function DeepInterview() {
               <div>
                 <button
                   onClick={() => { setSelectedDomain(''); setSelectedScenario(null); }}
-                  className="btn btn-secondary"
-                  style={{ marginBottom: '1rem' }}
+                  style={{ 
+                    marginBottom: '1rem',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#a3a3a3',
+                    border: '1px solid rgba(51, 188, 101, 0.3)',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
                 >
                   ← Back to Domains
                 </button>
